@@ -12,7 +12,10 @@ export default defineNuxtConfig({
     ],
   },
 
-  modules: ['shadcn-nuxt'],
+  modules: ['shadcn-nuxt', '@nuxt/eslint'],
+  eslint: {
+    // options here
+  },
   shadcn: {
     /**
      * Prefix for all the imported component
