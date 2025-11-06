@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.10.0",
+    "@nuxtjs/color-mode": "^3.5.2",
     "eslint": "^9.39.1",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.3.0",

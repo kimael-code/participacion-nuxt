@@ -12,7 +12,10 @@ export default defineNuxtConfig({
     ],
   },
 
-  modules: ['shadcn-nuxt', '@nuxt/eslint'],
+  modules: ['shadcn-nuxt', '@nuxt/eslint', '@nuxtjs/color-mode'],
+  colorMode: {
+    classSuffix: ''
+  },
   eslint: {
     // options here
   },
