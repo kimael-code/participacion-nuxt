@@ -15,6 +15,7 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     '@nuxtjs/color-mode',
     '@vueuse/nuxt',
+    '@nuxt/icon',
   ],
   colorMode: {
     classSuffix: '',
