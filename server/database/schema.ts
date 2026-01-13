@@ -1,0 +1,273 @@
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm";
+
+// ====================
+// Authentication Tables (better-auth)
+// ====================
+
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  emailVerified: integer("email_verified", { mode: "boolean" }).default(false),
+  name: text("name"),
+  image: text("image"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const accounts = sqliteTable("accounts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  providerAccountId: text("provider_account_id").notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ====================
+// Multi-Tenancy: Companies
+// ====================
+
+export const companies = sqliteTable("companies", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  rif: text("rif"), // RIF/NIT de la empresa
+  logo: text("logo"), // URL del logo
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// Relación many-to-many entre users y companies
+export const userCompanies = sqliteTable("user_companies", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  companyId: text("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("user"), // admin, user
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ====================
+// Geographic Catalogs (Normalized)
+// ====================
+
+export const states = sqliteTable("states", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code"), // Código opcional (ej: "MIR" para Miranda)
+});
+
+export const municipalities = sqliteTable("municipalities", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  stateId: text("state_id")
+    .notNull()
+    .references(() => states.id, { onDelete: "cascade" }),
+});
+
+export const parishes = sqliteTable("parishes", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  municipalityId: text("municipality_id")
+    .notNull()
+    .references(() => municipalities.id, { onDelete: "cascade" }),
+});
+
+export const votingCenters = sqliteTable("voting_centers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  parishId: text("parish_id")
+    .notNull()
+    .references(() => parishes.id),
+  latitude: real("latitude"), // Opcional para mapas
+  longitude: real("longitude"), // Opcional para mapas
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// ====================
+// Company Data
+// ====================
+
+export const administrativeUnits = sqliteTable("administrative_units", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  companyId: text("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const employees = sqliteTable("employees", {
+  id: text("id").primaryKey(),
+  cedula: text("cedula").notNull(), // Cédula de identidad
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  companyId: text("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  administrativeUnitId: text("administrative_unit_id").references(
+    () => administrativeUnits.id
+  ),
+  votingCenterId: text("voting_center_id").references(() => votingCenters.id), // Opcional
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const events = sqliteTable("events", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  eventDate: integer("event_date", { mode: "timestamp" }).notNull(),
+  companyId: text("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "cascade" }),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// ====================
+// Participation Tracking
+// ====================
+
+export const nonParticipationReasons = sqliteTable(
+  "non_participation_reasons",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  }
+);
+
+export const participations = sqliteTable("participations", {
+  id: text("id").primaryKey(),
+  employeeId: text("employee_id")
+    .notNull()
+    .references(() => employees.id, { onDelete: "cascade" }),
+  eventId: text("event_id")
+    .notNull()
+    .references(() => events.id, { onDelete: "cascade" }),
+  participated: integer("participated", { mode: "boolean" }).notNull(),
+  nonParticipationReasonId: text("non_participation_reason_id").references(
+    () => nonParticipationReasons.id
+  ),
+  notes: text("notes"),
+  registeredBy: text("registered_by").references(() => users.id),
+  registeredAt: integer("registered_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const csvListings = sqliteTable("csv_listings", {
+  id: text("id").primaryKey(),
+  eventId: text("event_id")
+    .notNull()
+    .references(() => events.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  recordCount: integer("record_count").notNull(),
+  generatedBy: text("generated_by").references(() => users.id),
+  generatedAt: integer("generated_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ====================
+// Relations
+// ====================
+
+export const companiesRelations = relations(companies, ({ many }) => ({
+  employees: many(employees),
+  administrativeUnits: many(administrativeUnits),
+  events: many(events),
+  userCompanies: many(userCompanies),
+}));
+
+export const statesRelations = relations(states, ({ many }) => ({
+  municipalities: many(municipalities),
+}));
+
+export const municipalitiesRelations = relations(
+  municipalities,
+  ({ one, many }) => ({
+    state: one(states, {
+      fields: [municipalities.stateId],
+      references: [states.id],
+    }),
+    parishes: many(parishes),
+  })
+);
+
+export const parishesRelations = relations(parishes, ({ one, many }) => ({
+  municipality: one(municipalities, {
+    fields: [parishes.municipalityId],
+    references: [municipalities.id],
+  }),
+  votingCenters: many(votingCenters),
+}));
+
+export const votingCentersRelations = relations(
+  votingCenters,
+  ({ one, many }) => ({
+    parish: one(parishes, {
+      fields: [votingCenters.parishId],
+      references: [parishes.id],
+    }),
+    employees: many(employees),
+  })
+);
+
+export const employeesRelations = relations(employees, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [employees.companyId],
+    references: [companies.id],
+  }),
+  administrativeUnit: one(administrativeUnits, {
+    fields: [employees.administrativeUnitId],
+    references: [administrativeUnits.id],
+  }),
+  votingCenter: one(votingCenters, {
+    fields: [employees.votingCenterId],
+    references: [votingCenters.id],
+  }),
+  participations: many(participations),
+}));
+
+export const participationsRelations = relations(
+  participations,
+  ({ one }) => ({
+    employee: one(employees, {
+      fields: [participations.employeeId],
+      references: [employees.id],
+    }),
+    event: one(events, {
+      fields: [participations.eventId],
+      references: [events.id],
+    }),
+    nonParticipationReason: one(nonParticipationReasons, {
+      fields: [participations.nonParticipationReasonId],
+      references: [nonParticipationReasons.id],
+    }),
+  })
+);
