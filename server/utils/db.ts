@@ -1,14 +1,12 @@
-import { drizzle } from "drizzle-orm/libsql";
-import { createClient } from "@libsql/client";
+import { createClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
+import env from '../../app/utils/env';
 
-const isDevelopment = process.env.NODE_ENV === "development";
+import * as schema from '../database/schema';
 
-// En desarrollo, usar SQLite local; en producción, usar Turso
 const client = createClient({
-  url: isDevelopment
-    ? "file:./server/database/local.db"
-    : (process.env.TURSO_DATABASE_URL as string),
-  authToken: isDevelopment ? undefined : process.env.TURSO_AUTH_TOKEN,
+  url: env.TURSO_DATABASE_URL,
+  authToken: env.TURSO_AUTH_TOKEN,
 });
 
-export const db = drizzle(client); // maybe pass the schema here
+export const db = drizzle(client, { schema });

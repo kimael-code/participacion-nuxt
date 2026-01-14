@@ -10,7 +10,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "db:seed": "tsx server/database/seed.ts"
+    "db:seed": "tsx --env-file=.env server/database/seed.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
