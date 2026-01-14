@@ -3,7 +3,8 @@ import tryParseEnv from './try-parse-env';
 
 const EnvSchema = z.object({
   NODE_ENV: z.string().default('development'),
-  BANANA: z.string(),
+  TURSO_DATABASE_URL: z.string(),
+  TURSO_AUTH_TOKEN: z.string().optional(),
 });
 
 export type EnvSchema = z.infer<typeof EnvSchema>;
