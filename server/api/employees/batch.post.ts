@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
 import { auth } from '~~/server/auth';
-import { employees, userCompanies } from '~~/server/database/schema';
+import { employees } from '~~/server/database/schema';
+import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
@@ -15,16 +15,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Invalid items array' });
   }
 
-  // Get user's company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
+  // Get target company ID
+  const companyId = await getUserCompanyId(session.user.id);
 
-  if (!userCompany) {
+  if (!companyId) {
     throw createError({ statusCode: 403, message: 'Unauthorized' });
   }
-
-  const companyId = userCompany.companyId;
   const now = new Date();
 
   // Process items in chunks or a single transaction

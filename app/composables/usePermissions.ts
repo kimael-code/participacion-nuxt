@@ -6,16 +6,20 @@ export const usePermissions = () => {
   const { data: userPermissions, refresh } = useFetch<any>(
     '/api/auth/permissions',
     {
-      immediate: !!sessionData.data.value,
-      watch: [sessionData.data],
+      immediate: !!sessionData.value?.data,
+      watch: [() => sessionData.value?.data],
     },
   );
 
   const hasPermission = (permissionSlug?: string) => {
     if (!permissionSlug) return true;
     if (!userPermissions.value) return false;
-    if (userPermissions.value.role === 'admin') return true;
-    return userPermissions.value.permissions.includes(permissionSlug);
+
+    const userRole = userPermissions.value.role;
+    const perms = userPermissions.value.permissions || [];
+
+    if (userRole === 'admin') return true;
+    return perms.includes(permissionSlug);
   };
 
   const role = computed(() => userPermissions.value?.role || 'user');

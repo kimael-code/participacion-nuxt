@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { ChevronsUpDown, Plus } from 'lucide-vue-next';
 
-defineProps<{
-  teams: {
-    name: string;
-    logo: string;
-    plan: string;
-  }[];
-}>();
+withDefaults(
+  defineProps<{
+    teams?: {
+      name: string;
+      logo: string;
+      plan: string;
+    }[];
+  }>(),
+  {
+    teams: () => [],
+  },
+);
 
 const activeTeam = ref({
   name: 'Empresa Demo C.A.',

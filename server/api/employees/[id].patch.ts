@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { auth } from '~~/server/auth';
-import { employees, userCompanies } from '~~/server/database/schema';
+import { employees } from '~~/server/database/schema';
+import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
@@ -13,12 +14,10 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event);
 
-  // Verify ownership via company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
+  // Get target company ID
+  const companyId = await getUserCompanyId(session.user.id);
 
-  if (!userCompany) {
+  if (!companyId) {
     throw createError({ statusCode: 403, message: 'Unauthorized' });
   }
 
@@ -34,9 +33,7 @@ export default defineEventHandler(async (event) => {
       votingCenterId: body.votingCenterId,
       updatedAt: new Date(),
     })
-    .where(
-      and(eq(employees.id, id), eq(employees.companyId, userCompany.companyId)),
-    )
+    .where(and(eq(employees.id, id), eq(employees.companyId, companyId)))
     .returning();
 
   if (updatedEmployee.length === 0) {

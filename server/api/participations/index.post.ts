@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { auth } from '~~/server/auth';
 import { participations } from '../../database/schema';
 import { db } from '../../utils/db';
 
@@ -16,13 +17,15 @@ const participationSchema = z.object({
  * POST /api/participations
  */
 export default defineEventHandler(async (event) => {
+  // Get session
+  const session = await auth.api.getSession({ headers: event.headers });
+  if (!session) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' });
+  }
+
   const body = await readBody(event);
-
-  // Validate input
   const validatedData = participationSchema.parse(body);
-
-  // TODO: Get authenticated user ID
-  const userId = 'temp-user-id'; // Replace with actual auth
+  const userId = session.user.id;
 
   // Check if participation already exists
   const existing = await db.query.participations.findFirst({

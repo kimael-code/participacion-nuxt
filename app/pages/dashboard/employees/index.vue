@@ -12,6 +12,7 @@ import {
   MapPin,
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
+import { usePermissions } from '~/composables/usePermissions';
 
 definePageMeta({
   layout: 'dashboard',
@@ -46,14 +47,17 @@ const {
   data: employeesData,
   pending,
   refresh,
-} = useFetch<{ data: Employee[]; total?: number }>('/api/employees', {
-  query: computed(() => ({
-    q: searchQuery.value,
-    unitId: selectedUnitId.value !== 'all' ? selectedUnitId.value : undefined,
-    page: page.value,
-  })),
-  watch: [searchQuery, selectedUnitId, page],
-});
+} = useFetch<{ data: Employee[]; total: number; page: number; limit: number }>(
+  '/api/employees',
+  {
+    query: computed(() => ({
+      q: searchQuery.value,
+      unitId: selectedUnitId.value !== 'all' ? selectedUnitId.value : undefined,
+      page: page.value,
+    })),
+    watch: [searchQuery, selectedUnitId, page],
+  },
+);
 
 const showEmployeeDialog = ref(false);
 const showImportDialog = ref(false);
@@ -71,7 +75,7 @@ const handleDelete = async (id: string) => {
     await $fetch(`/api/employees/${id}`, { method: 'DELETE' });
     toast.success('Empleado eliminado correctamente');
     refresh();
-  } catch (error) {
+  } catch {
     toast.error('Error al eliminar empleado');
   }
 };
@@ -81,6 +85,8 @@ const handleSaved = () => {
   editingEmployee.value = null;
   refresh();
 };
+
+const { hasPermission } = usePermissions();
 </script>
 
 <template>
@@ -93,11 +99,12 @@ const handleSaved = () => {
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="outline" @click="showImportDialog = true">
+        <Button v-if="hasPermission('employees:manage')" variant="outline" @click="showImportDialog = true">
           <FileUp class="mr-2 h-4 w-4" />
           Importar CSV
         </Button>
         <Button
+          v-if="hasPermission('employees:manage')"
           @click="
             editingEmployee = null;
             showEmployeeDialog = true;
@@ -206,10 +213,11 @@ const handleSaved = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem @click="handleEdit(employee)">
+                    <DropdownMenuItem v-if="hasPermission('employees:manage')" @click="handleEdit(employee)">
                       <Pencil class="mr-2 h-4 w-4" /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      v-if="hasPermission('employees:manage')"
                       class="text-destructive"
                       @click="handleDelete(employee.id)"
                     >
@@ -223,6 +231,51 @@ const handleSaved = () => {
         </Table>
       </div>
     </Card>
+
+    <!-- Pagination -->
+    <div
+      v-if="employeesData?.total && employeesData.total > employeesData.limit"
+      class="flex items-center justify-between px-2"
+    >
+      <div class="text-sm text-muted-foreground">
+        Mostrando {{ employeesData.data.length }} de
+        {{ employeesData.total }} empleados
+      </div>
+      <Pagination
+        v-slot="{ page: p }"
+        :total="employeesData.total"
+        :sibling-count="1"
+        :show-edges="true"
+        :items-per-page="employeesData.limit"
+        :page="page"
+        @update:page="(v) => (page = v)"
+      >
+        <PaginationContent v-slot="{ items }" class="flex items-center gap-1">
+          <PaginationFirst />
+          <PaginationPrevious />
+
+          <template v-for="(item, index) in items">
+            <PaginationItem
+              v-if="item.type === 'page'"
+              :key="index"
+              :value="item.value"
+              as-child
+            >
+              <Button
+                class="h-10 w-10 p-0"
+                :variant="item.value === p ? 'default' : 'outline'"
+              >
+                {{ item.value }}
+              </Button>
+            </PaginationItem>
+            <PaginationEllipsis v-else :key="item.type" :index="index" />
+          </template>
+
+          <PaginationNext />
+          <PaginationLast />
+        </PaginationContent>
+      </Pagination>
+    </div>
 
     <!-- Dialogs -->
     <EmployeesEmployeeDialog

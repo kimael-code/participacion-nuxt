@@ -31,7 +31,6 @@ const handleLogin = async () => {
       },
       onSuccess: () => {
         toast.success('Sesión iniciada con éxito');
-        navigateTo('/dashboard');
       },
     },
   );

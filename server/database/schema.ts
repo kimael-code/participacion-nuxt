@@ -1,5 +1,11 @@
 import { relations } from 'drizzle-orm';
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 // ====================
 // Authentication Tables (better-auth v1)
@@ -14,6 +20,9 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   image: text('image'),
   role: text('role').default('user'), // Link to roles.slug
+  banned: integer('banned', { mode: 'boolean' }).default(false),
+  banReason: text('ban_reason'),
+  banExpires: integer('ban_expires', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -102,24 +111,33 @@ export const rolePermissions = sqliteTable('role_permissions', {
 export const companies = sqliteTable('companies', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  rif: text('rif'), // RIF/NIT de la empresa
+  rif: text('rif').unique(), // RIF/NIT de la empresa
   logo: text('logo'), // URL del logo
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 // Relación many-to-many entre users y companies
-export const userCompanies = sqliteTable('user_companies', {
-  id: text('id').primaryKey(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  companyId: text('company_id')
-    .notNull()
-    .references(() => companies.id, { onDelete: 'cascade' }),
-  role: text('role').notNull().default('user'), // admin, user
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+export const userCompanies = sqliteTable(
+  'user_companies',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    companyId: text('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    role: text('role').notNull().default('user'), // admin, user
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  },
+  (table) => ({
+    userCompanyIdx: uniqueIndex('user_company_idx').on(
+      table.userId,
+      table.companyId,
+    ),
+  }),
+);
 
 // ====================
 // Geographic Catalogs (Normalized)
@@ -127,29 +145,44 @@ export const userCompanies = sqliteTable('user_companies', {
 
 export const states = sqliteTable('states', {
   id: text('id').primaryKey(),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   code: text('code'), // Código opcional (ej: "MIR" para Miranda)
 });
 
-export const municipalities = sqliteTable('municipalities', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  stateId: text('state_id')
-    .notNull()
-    .references(() => states.id, { onDelete: 'cascade' }),
-});
+export const municipalities = sqliteTable(
+  'municipalities',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    stateId: text('state_id')
+      .notNull()
+      .references(() => states.id, { onDelete: 'cascade' }),
+  },
+  (table) => ({
+    nameStateIdx: uniqueIndex('name_state_idx').on(table.name, table.stateId),
+  }),
+);
 
-export const parishes = sqliteTable('parishes', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  municipalityId: text('municipality_id')
-    .notNull()
-    .references(() => municipalities.id, { onDelete: 'cascade' }),
-});
+export const parishes = sqliteTable(
+  'parishes',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    municipalityId: text('municipality_id')
+      .notNull()
+      .references(() => municipalities.id, { onDelete: 'cascade' }),
+  },
+  (table) => ({
+    nameMunicipalityIdx: uniqueIndex('name_municipality_idx').on(
+      table.name,
+      table.municipalityId,
+    ),
+  }),
+);
 
 export const votingCenters = sqliteTable('voting_centers', {
   id: text('id').primaryKey(),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   address: text('address').notNull(),
   parishId: text('parish_id')
     .notNull()
@@ -164,20 +197,29 @@ export const votingCenters = sqliteTable('voting_centers', {
 // Company Data
 // ====================
 
-export const administrativeUnits = sqliteTable('administrative_units', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description'),
-  companyId: text('company_id')
-    .notNull()
-    .references(() => companies.id, { onDelete: 'cascade' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
-});
+export const administrativeUnits = sqliteTable(
+  'administrative_units',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description'),
+    companyId: text('company_id')
+      .notNull()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  },
+  (table) => ({
+    nameCompanyIdx: uniqueIndex('name_company_idx').on(
+      table.name,
+      table.companyId,
+    ),
+  }),
+);
 
 export const employees = sqliteTable('employees', {
   id: text('id').primaryKey(),
-  cedula: text('cedula').notNull(), // Cédula de identidad
+  cedula: text('cedula').notNull().unique(), // Cédula de identidad
   firstName: text('first_name').notNull(),
   lastName: text('last_name').notNull(),
   email: text('email'),
@@ -195,7 +237,7 @@ export const employees = sqliteTable('employees', {
 
 export const events = sqliteTable('events', {
   id: text('id').primaryKey(),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   description: text('description'),
   eventDate: integer('event_date', { mode: 'timestamp' }).notNull(),
   companyId: text('company_id')

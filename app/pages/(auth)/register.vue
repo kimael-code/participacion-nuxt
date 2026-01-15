@@ -39,7 +39,6 @@ const handleRegister = async () => {
       },
       onSuccess: () => {
         toast.success('Cuenta creada exitosamente');
-        navigateTo('/dashboard');
       },
     },
   );

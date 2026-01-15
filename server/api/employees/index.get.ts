@@ -1,6 +1,7 @@
-import { and, asc, eq, like, or } from 'drizzle-orm';
+import { and, asc, count, eq, like, or } from 'drizzle-orm';
 import { auth } from '~~/server/auth';
-import { employees, userCompanies } from '~~/server/database/schema';
+import { employees } from '~~/server/database/schema';
+import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
@@ -16,25 +17,22 @@ export default defineEventHandler(async (event) => {
   const limit = parseInt(query.limit as string) || 20;
   const offset = (page - 1) * limit;
 
-  // Get user's company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
+  // Get target company ID
+  const companyId = await getUserCompanyId(session.user.id);
 
-  if (!userCompany) {
+  if (!companyId) {
     return { data: [], total: 0 };
   }
 
-  const filters = [eq(employees.companyId, userCompany.companyId)];
+  const filters = [eq(employees.companyId, companyId)];
 
   if (q) {
-    filters.push(
-      or(
-        like(employees.cedula, `%${q}%`),
-        like(employees.firstName, `%${q}%`),
-        like(employees.lastName, `%${q}%`),
-      ),
-    );
+    const searchFilters = [
+      like(employees.cedula, `%${q}%`),
+      like(employees.firstName, `%${q}%`),
+      like(employees.lastName, `%${q}%`),
+    ];
+    filters.push(or(...searchFilters)!);
   }
 
   if (unitId) {
@@ -43,21 +41,28 @@ export default defineEventHandler(async (event) => {
 
   const whereClause = filters.length > 1 ? and(...filters) : filters[0];
 
-  const results = await db.query.employees.findMany({
-    where: whereClause,
-    with: {
-      administrativeUnit: true,
-      votingCenter: true,
-    },
-    limit,
-    offset,
-    orderBy: [asc(employees.lastName), asc(employees.firstName)],
-  });
+  const [results, totalResult] = await Promise.all([
+    db.query.employees.findMany({
+      where: whereClause,
+      with: {
+        administrativeUnit: true,
+        votingCenter: true,
+      },
+      limit,
+      offset,
+      orderBy: [asc(employees.lastName), asc(employees.firstName)],
+    }),
+    db
+      .select({ count: count() })
+      .from(employees)
+      .where(whereClause || undefined),
+  ]);
 
-  // Simple count for pagination (in a real app we'd use a separate count query or total header)
-  // For now, let's keep it simple or return enough info.
+  const total = totalResult[0]?.count || 0;
+
   return {
     data: results,
+    total,
     page,
     limit,
   };

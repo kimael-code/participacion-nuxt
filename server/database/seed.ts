@@ -11,6 +11,7 @@ import {
   rolePermissions,
   roles,
   states,
+  userCompanies,
   votingCenters,
 } from './schema';
 
@@ -142,6 +143,10 @@ async function seed() {
         name: 'Lara',
         code: 'LAR',
       })
+      .onConflictDoUpdate({
+        target: states.name,
+        set: { code: 'LAR' },
+      })
       .returning();
 
     // Municipio Iribarren
@@ -151,6 +156,10 @@ async function seed() {
         id: crypto.randomUUID(),
         name: 'Iribarren',
         stateId: lara.id,
+      })
+      .onConflictDoUpdate({
+        target: [municipalities.name, municipalities.stateId],
+        set: { name: 'Iribarren' },
       })
       .returning();
 
@@ -174,6 +183,10 @@ async function seed() {
           name: pName,
           municipalityId: iribarren.id,
         })
+        .onConflictDoUpdate({
+          target: [parishes.name, parishes.municipalityId],
+          set: { name: pName },
+        })
         .returning();
       createdParishes.push(p);
     }
@@ -188,6 +201,10 @@ async function seed() {
         rif: 'J-12345678-9',
         createdAt: new Date(),
         updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: companies.rif,
+        set: { name: 'Empresa Demo C.A.', updatedAt: new Date() },
       })
       .returning();
 
@@ -211,6 +228,10 @@ async function seed() {
           companyId: company.id,
           createdAt: new Date(),
           updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [administrativeUnits.name, administrativeUnits.companyId],
+          set: { updatedAt: new Date() },
         })
         .returning();
       createdUnits.push(unit);
@@ -241,6 +262,10 @@ async function seed() {
           createdAt: new Date(),
           updatedAt: new Date(),
         })
+        .onConflictDoUpdate({
+          target: votingCenters.name,
+          set: { address: center.address, updatedAt: new Date() },
+        })
         .returning();
       createdCenters.push(c);
     }
@@ -254,18 +279,21 @@ async function seed() {
       const center =
         createdCenters[Math.floor(Math.random() * createdCenters.length)];
 
-      await db.insert(employees).values({
-        id: crypto.randomUUID(),
-        cedula: Math.floor(10000000 + Math.random() * 20000000).toString(),
-        firstName: `Nombre${i}`,
-        lastName: `Apellido${i}`,
-        email: `empleado${i}@empresa.com`,
-        companyId: company.id,
-        administrativeUnitId: unit.id,
-        votingCenterId: center.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      await db
+        .insert(employees)
+        .values({
+          id: crypto.randomUUID(),
+          cedula: Math.floor(10000000 + Math.random() * 20000000).toString(),
+          firstName: `Nombre${i}`,
+          lastName: `Apellido${i}`,
+          email: `empleado${i}@empresa.com`,
+          companyId: company.id,
+          administrativeUnitId: unit.id,
+          votingCenterId: center.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing();
     }
 
     // 6. Evento de Prueba
@@ -282,6 +310,13 @@ async function seed() {
         createdAt: new Date(),
         updatedAt: new Date(),
       })
+      .onConflictDoUpdate({
+        target: events.name,
+        set: {
+          description: 'Elección de representantes sindicales',
+          updatedAt: new Date(),
+        },
+      })
       .returning();
 
     // 7. Motivos de No Participación
@@ -295,14 +330,30 @@ async function seed() {
     ];
 
     for (const reason of reasonsList) {
-      await db.insert(nonParticipationReasons).values({
-        id: crypto.randomUUID(),
-        name: reason,
-        createdAt: new Date(),
-      });
+      await db
+        .insert(nonParticipationReasons)
+        .values({
+          id: crypto.randomUUID(),
+          name: reason,
+          createdAt: new Date(),
+        })
+        .onConflictDoNothing();
     }
 
-    console.log('✅ Seed completed successfully!');
+    // 8. Vincular usuarios existentes a la empresa (Modo Dev)
+    console.log('Checking for existing users to link...');
+    const existingUsers = await db.query.users.findMany();
+    for (const u of existingUsers) {
+      await db
+        .insert(userCompanies)
+        .values({
+          id: crypto.randomUUID(),
+          userId: u.id,
+          companyId: company.id,
+          createdAt: new Date(),
+        })
+        .onConflictDoNothing();
+    }
     console.log(`Company ID: ${company.id}`);
     console.log(`Event ID: ${event.id}`);
   } catch (error) {

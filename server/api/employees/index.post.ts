@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
 import { auth } from '~~/server/auth';
-import { employees, userCompanies } from '~~/server/database/schema';
+import { employees } from '~~/server/database/schema';
+import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
@@ -11,15 +11,13 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event);
 
-  // Get user's company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
+  // Get target company ID
+  const companyId = await getUserCompanyId(session.user.id);
 
-  if (!userCompany) {
+  if (!companyId) {
     throw createError({
       statusCode: 403,
-      message: 'User does not belong to any company',
+      message: 'User does not belong to any company and no fallback available',
     });
   }
 
@@ -32,7 +30,7 @@ export default defineEventHandler(async (event) => {
       lastName: body.lastName,
       email: body.email,
       phone: body.phone,
-      companyId: userCompany.companyId,
+      companyId: companyId,
       administrativeUnitId: body.administrativeUnitId,
       votingCenterId: body.votingCenterId,
       createdAt: new Date(),

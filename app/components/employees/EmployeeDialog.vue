@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { toast } from 'vue-sonner';
 
 interface Props {
-  open: boolean;
+  open?: boolean;
   employee?: any;
   catalogs?: any;
 }
@@ -129,13 +129,15 @@ const handleSubmit = async () => {
               <SelectValue placeholder="Seleccione unidad" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem
-                v-for="unit in catalogs?.units || []"
-                :key="unit.id"
-                :value="unit.id"
-              >
-                {{ unit.name }}
-              </SelectItem>
+              <SelectGroup>
+                <SelectItem
+                  v-for="unit in catalogs?.units || []"
+                  :key="unit.id"
+                  :value="unit.id"
+                >
+                  {{ unit.name }}
+                </SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -147,13 +149,15 @@ const handleSubmit = async () => {
               <SelectValue placeholder="Seleccione centro" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem
-                v-for="center in catalogs?.centers || []"
-                :key="center.id"
-                :value="center.id"
-              >
-                {{ center.name }}
-              </SelectItem>
+              <SelectGroup>
+                <SelectItem
+                  v-for="center in catalogs?.centers || []"
+                  :key="center.id"
+                  :value="center.id"
+                >
+                  {{ center.name }}
+                </SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>

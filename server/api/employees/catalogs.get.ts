@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { auth } from '~~/server/auth';
-import { administrativeUnits, userCompanies } from '~~/server/database/schema';
+import { administrativeUnits } from '~~/server/database/schema';
+import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
@@ -9,18 +10,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' });
   }
 
-  // Get user's company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
+  // Get target company ID
+  const companyId = await getUserCompanyId(session.user.id);
 
-  if (!userCompany) {
+  if (!companyId) {
     return { units: [], centers: [] };
   }
 
   const [units, centers] = await Promise.all([
     db.query.administrativeUnits.findMany({
-      where: eq(administrativeUnits.companyId, userCompany.companyId),
+      where: eq(administrativeUnits.companyId, companyId),
       orderBy: (records, { asc }) => [asc(records.name)],
     }),
     db.query.votingCenters.findMany({

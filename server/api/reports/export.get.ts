@@ -1,7 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { auth } from '~~/server/auth';
-import { participations, userCompanies } from '~~/server/database/schema';
+import * as schema from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
+
+const { userCompanies, employees } = schema;
 
 export default defineEventHandler(async (event) => {
   const session = await auth.api.getSession({ headers: event.headers });
@@ -25,9 +27,23 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Unauthorized' });
   }
 
-  // Fetch all participations for the event
+  // Fetch participations for the event, filtered by user's company
   const results = await db.query.participations.findMany({
-    where: eq(participations.eventId, eventId),
+    where: (participations, { eq, and, exists }) =>
+      and(
+        eq(participations.eventId, eventId),
+        exists(
+          db
+            .select()
+            .from(employees)
+            .where(
+              and(
+                eq(employees.id, participations.employeeId),
+                eq(employees.companyId, userCompany.companyId),
+              ),
+            ),
+        ),
+      ),
     with: {
       employee: {
         with: {
