@@ -7,6 +7,9 @@ import {
   municipalities,
   nonParticipationReasons,
   parishes,
+  permissions,
+  rolePermissions,
+  roles,
   states,
   votingCenters,
 } from './schema';
@@ -15,6 +18,119 @@ async function seed() {
   console.log('🌱 Starting seed...');
 
   try {
+    // 0. Roles y Permisos
+    console.log('Inserting RBAC data...');
+
+    const permissionsList = [
+      {
+        slug: 'participation:register',
+        name: 'Registrar Participación',
+        desc: 'Permite registrar asistencia de empleados',
+      },
+      {
+        slug: 'reports:read',
+        name: 'Ver Reportes',
+        desc: 'Permite visualizar estadísticas y listados',
+      },
+      {
+        slug: 'reports:export',
+        name: 'Exportar Datos',
+        desc: 'Permite generar archivos CSV y PDF',
+      },
+      {
+        slug: 'employees:read',
+        name: 'Ver Empleados',
+        desc: 'Permite ver el listado de empleados',
+      },
+      {
+        slug: 'employees:manage',
+        name: 'Gestionar Empleados',
+        desc: 'Permite crear, editar y eliminar empleados',
+      },
+      {
+        slug: 'events:read',
+        name: 'Ver Eventos',
+        desc: 'Permite ver listado de eventos',
+      },
+      {
+        slug: 'units:read',
+        name: 'Ver Unidades',
+        desc: 'Permite ver unidades administrativas',
+      },
+    ];
+
+    const createdPermissions: Record<string, string> = {};
+    for (const p of permissionsList) {
+      const [perm] = await db
+        .insert(permissions)
+        .values({
+          id: crypto.randomUUID(),
+          slug: p.slug,
+          name: p.name,
+          description: p.desc,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: permissions.slug,
+          set: { name: p.name, updatedAt: new Date() },
+        })
+        .returning();
+      createdPermissions[p.slug] = perm.id;
+    }
+
+    const rolesList = [
+      { slug: 'admin', name: 'Administrador', desc: 'Acceso total al sistema' },
+      {
+        slug: 'operator',
+        name: 'Operador',
+        desc: 'Registro de participación y consultas básicas',
+      },
+      {
+        slug: 'reporter',
+        name: 'Generador de Reportes',
+        desc: 'Acceso a estadísticas y exportación de datos',
+      },
+    ];
+
+    const roleToPerms: Record<string, string[]> = {
+      admin: permissionsList.map((p) => p.slug), // All
+      operator: ['participation:register', 'employees:read', 'events:read'],
+      reporter: ['reports:read', 'reports:export', 'employees:read'],
+    };
+
+    for (const r of rolesList) {
+      const [role] = await db
+        .insert(roles)
+        .values({
+          id: crypto.randomUUID(),
+          slug: r.slug,
+          name: r.name,
+          description: r.desc,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: roles.slug,
+          set: { name: r.name, updatedAt: new Date() },
+        })
+        .returning();
+
+      // Assign permissions to role
+      const permsToAssign = roleToPerms[r.slug] || [];
+      for (const pSlug of permsToAssign) {
+        await db
+          .insert(rolePermissions)
+          .values({
+            id: crypto.randomUUID(),
+            roleId: role.id,
+            permissionId: createdPermissions[pSlug],
+            createdAt: new Date(),
+          })
+          .onConflictDoNothing();
+      }
+    }
+
     // 1. Estados, Municipios, Parroquias (Data de ejemplo de Venezuela)
     console.log('Inserting geographic data...');
 

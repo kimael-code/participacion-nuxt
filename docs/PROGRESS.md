@@ -34,19 +34,21 @@
 - ✅ **SSE endpoint** para dashboard en tiempo real (`/api/dashboard/stats`)
 - ✅ API de búsqueda de empleados (`/api/employees/search`)
 - ✅ API de registro de participación (`/api/participations`)
-- ⏳ Pendiente: CRUD completo de catálogos, CSV, PDF
+- ✅ CRUD completo de catálogos (Básico vía Seed)
+- ⏳ Pendiente: UI para gestión de empleados y CSV/PDF extensiones
 
 ### Fase 4: Autenticación (50% completado)
 
 - ✅ Better-auth configurado con Google y GitHub
-- ⏳ Pendiente: Páginas de login/logout, protección de rutas
+- ✅ Páginas de login/logout, protección de rutas y Middleware RBAC
+- ✅ Roles y Permisos dinámicos implementados
 
 ### Fase 6: Registro de Participación (60% completado)
 
-- ✅ Composable `useEmployeeSearch` con debounce
-- ✅ Composable `useParticipationRegistration` con toasts
-- ✅ API de registro implementada
-- ⏳ Pendiente: UI de búsqueda y registro
+- ✅ Composable `useEmployeeSearch` optimizado
+- ✅ Composable `useParticipationRegistration` integrado
+- ✅ API de registro y búsqueda asegurada por compañía
+- ✅ UI de búsqueda y registro completa (/dashboard/participation/register)
 
 ### Fase 7: Dashboard (70% completado)
 
@@ -182,11 +184,11 @@ pnpm lint:fix
 
 - **Fase 1**: ████████░░ 90%
 - **Fase 2**: ██████████ 100%
-- **Fase 3**: ████░░░░░░ 40%
-- **Fase 4**: █████░░░░░ 50%
+- **Fase 3**: █████░░░░░ 50%
+- **Fase 4**: ██████████ 100%
 - **Fase 5**: ░░░░░░░░░░ 0%
-- **Fase 6**: ██████░░░░ 60%
-- **Fase 7**: ███████░░░ 70%
+- **Fase 6**: ██████████ 100%
+- **Fase 7**: ████████░░ 80%
 - **Fase 8**: ░░░░░░░░░░ 0%
 - **Fase 9**: ░░░░░░░░░░ 0%
 - **Fase 10**: ░░░░░░░░░░ 0%

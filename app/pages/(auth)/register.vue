@@ -1,34 +1,74 @@
 <script setup lang="ts">
+import { authClient } from '~/utils/auth-client';
 import { Loader2 } from 'lucide-vue-next';
+import { toast } from 'vue-sonner';
 
 definePageMeta({
   layout: 'auth',
 });
 
 const isLoading = ref(false);
+const name = ref('');
+const email = ref('');
+const password = ref('');
+const passwordConfirmation = ref('');
+
+const handleRegister = async () => {
+  if (password.value !== passwordConfirmation.value) {
+    toast.error('Las contraseñas no coinciden');
+    return;
+  }
+
+  isLoading.value = true;
+  await authClient.signUp.email(
+    {
+      email: email.value,
+      name: name.value,
+      password: password.value,
+      callbackURL: '/dashboard',
+    },
+    {
+      onRequest: () => {
+        isLoading.value = true;
+      },
+      onResponse: () => {
+        isLoading.value = false;
+      },
+      onError: (ctx) => {
+        toast.error(ctx.error.message || 'Error al crear la cuenta');
+      },
+      onSuccess: () => {
+        toast.success('Cuenta creada exitosamente');
+        navigateTo('/dashboard');
+      },
+    },
+  );
+};
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
     <Card class="overflow-hidden py-0">
       <CardContent class="grid p-0 md:grid-cols-2">
-        <form class="p-6 md:p-8">
+        <form class="p-6 md:p-8" @submit.prevent="handleRegister">
           <div class="flex flex-col items-center text-center">
             <h1 class="text-2xl font-bold">Crear cuenta</h1>
             <p class="text-balance text-muted-foreground">
               Ingrese los datos solicitados a continuación
             </p>
           </div>
-          <div class="grid gap-4 mt-6">
+          <div class="mt-6 grid gap-4">
             <div class="grid gap-2">
-              <Label for="username"> Nombre de Usuario </Label>
+              <Label for="username"> Nombre </Label>
               <Input
                 id="username"
-                placeholder="por ejemplo: jcañizales"
+                v-model="name"
+                placeholder="por ejemplo: José Cañizales"
                 type="text"
                 auto-capitalize="none"
-                auto-complete="username"
+                auto-complete="name"
                 auto-correct="off"
+                required
                 :disabled="isLoading"
               />
             </div>
@@ -36,33 +76,45 @@ const isLoading = ref(false);
               <Label for="email"> Correo Electrónico </Label>
               <Input
                 id="email"
+                v-model="email"
                 placeholder="jcanizales@ejemplo.com"
                 type="email"
                 auto-capitalize="none"
                 auto-complete="email"
                 auto-correct="off"
+                required
                 :disabled="isLoading"
               />
             </div>
             <div class="grid gap-2">
               <Label for="password"> Contraseña </Label>
-              <PasswordInput id="password" />
+              <PasswordInput
+                id="password"
+                v-model="password"
+                required
+                :disabled="isLoading"
+              />
             </div>
             <div class="grid gap-2">
               <Label for="confirm-password"> Confirme Contraseña </Label>
-              <PasswordInput id="confirm-password" />
+              <PasswordInput
+                id="confirm-password"
+                v-model="passwordConfirmation"
+                required
+                :disabled="isLoading"
+              />
             </div>
-            <Button :disabled="isLoading" class="w-full">
+            <Button type="submit" :disabled="isLoading" class="w-full">
               <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
               Crear Cuenta
             </Button>
           </div>
 
-          <p class="text-center text-sm text-muted-foreground mt-6">
+          <p class="mt-6 text-center text-sm text-muted-foreground">
             ¿Ya tienes una cuenta?
             <NuxtLink
               to="/login"
-              class="underline underline-offset-4 hover:text-primary font-medium"
+              class="font-medium underline underline-offset-4 hover:text-primary"
             >
               Login
             </NuxtLink>
@@ -73,7 +125,7 @@ const isLoading = ref(false);
             src="/placeholder.svg"
             alt="Image"
             class="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-          >
+          />
         </div>
       </CardContent>
     </Card>

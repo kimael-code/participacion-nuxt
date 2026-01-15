@@ -1,27 +1,36 @@
 import { and, eq, like, or } from 'drizzle-orm';
-import { employees } from '../../database/schema';
+import { auth } from '../../auth';
+import { employees, userCompanies } from '../../database/schema';
 import { db } from '../../utils/db';
 
-/**
- * Search employees by cedula
- * GET /api/employees/search?q=12345678&companyId=xxx
- */
 export default defineEventHandler(async (event) => {
+  const session = await auth.api.getSession({ headers: event.headers });
+  if (!session) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' });
+  }
+
   const query = getQuery(event);
   const searchQuery = query.q as string;
-  const companyId = query.companyId as string;
 
-  if (!searchQuery || !companyId) {
+  if (!searchQuery) {
     throw createError({
       statusCode: 400,
-      message: 'Search query (q) and companyId are required',
+      message: 'Search query (q) is required',
     });
   }
 
-  // Search by cedula (exact or partial match)
+  // Get user's company
+  const userCompany = await db.query.userCompanies.findFirst({
+    where: eq(userCompanies.userId, session.user.id),
+  });
+
+  if (!userCompany) {
+    return [];
+  }
+
   const results = await db.query.employees.findMany({
     where: and(
-      eq(employees.companyId, companyId),
+      eq(employees.companyId, userCompany.companyId),
       or(
         like(employees.cedula, `%${searchQuery}%`),
         like(employees.firstName, `%${searchQuery}%`),

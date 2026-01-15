@@ -1,28 +1,64 @@
 <script setup lang="ts">
+import { authClient } from '~/utils/auth-client';
+import { Loader2 } from 'lucide-vue-next';
+import { toast } from 'vue-sonner';
+
 definePageMeta({
   layout: 'auth',
 });
+
+const isLoading = ref(false);
+const email = ref('');
+const password = ref('');
+
+const handleLogin = async () => {
+  isLoading.value = true;
+  await authClient.signIn.email(
+    {
+      email: email.value,
+      password: password.value,
+      callbackURL: '/dashboard',
+    },
+    {
+      onRequest: () => {
+        isLoading.value = true;
+      },
+      onResponse: () => {
+        isLoading.value = false;
+      },
+      onError: (ctx) => {
+        toast.error(ctx.error.message || 'Error al iniciar sesión');
+      },
+      onSuccess: () => {
+        toast.success('Sesión iniciada con éxito');
+        navigateTo('/dashboard');
+      },
+    },
+  );
+};
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
     <Card class="overflow-hidden py-0">
       <CardContent class="grid p-0 md:grid-cols-2">
-        <form class="p-6 md:p-8">
+        <form class="p-6 md:p-8" @submit.prevent="handleLogin">
           <div class="flex flex-col gap-6">
             <div class="flex flex-col items-center text-center">
               <h1 class="text-2xl font-bold">Bienvenido de nuevo</h1>
               <p class="text-balance text-muted-foreground">
-                Inicia sesión en tu cuenta de Acme Inc
+                Inicia sesión en tu cuenta
               </p>
             </div>
             <div class="grid gap-2">
-              <Label for="username">Usuario</Label>
+              <Label for="email">Correo Electrónico</Label>
               <Input
-                id="username"
-                type="username"
-                placeholder="josé.cañizales"
+                id="email"
+                v-model="email"
+                type="email"
+                placeholder="jose.canizales@ejemplo.com"
                 required
+                :disabled="isLoading"
               />
             </div>
             <div class="grid gap-2">
@@ -35,9 +71,18 @@ definePageMeta({
                   ¿Olvidó su contraseña?
                 </a>
               </div>
-              <Input id="password" type="password" required />
+              <Input
+                id="password"
+                v-model="password"
+                type="password"
+                required
+                :disabled="isLoading"
+              />
             </div>
-            <Button type="submit" class="w-full"> Ingresar </Button>
+            <Button type="submit" class="w-full" :disabled="isLoading">
+              <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
+              Ingresar
+            </Button>
             <div class="text-center text-sm">
               ¿No tienes una cuenta?
               <NuxtLink to="/register" class="underline underline-offset-4">
@@ -51,7 +96,7 @@ definePageMeta({
             src="/placeholder.svg"
             alt="Image"
             class="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-          >
+          />
         </div>
       </CardContent>
     </Card>

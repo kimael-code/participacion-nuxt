@@ -2,15 +2,18 @@ import { relations } from 'drizzle-orm';
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // ====================
-// Authentication Tables (better-auth)
+// Authentication Tables (better-auth v1)
 // ====================
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
-  emailVerified: integer('email_verified', { mode: 'boolean' }).default(false),
-  name: text('name'),
+  emailVerified: integer('email_verified', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  name: text('name').notNull(),
   image: text('image'),
+  role: text('role').default('user'), // Link to roles.slug
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -20,8 +23,12 @@ export const sessions = sqliteTable('sessions', {
   userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
   expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 export const accounts = sqliteTable('accounts', {
@@ -29,11 +36,62 @@ export const accounts = sqliteTable('accounts', {
   userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  provider: text('provider').notNull(),
-  providerAccountId: text('provider_account_id').notNull(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
-  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  password: text('password'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: integer('access_token_expires_at', {
+    mode: 'timestamp',
+  }),
+  refreshTokenExpiresAt: integer('refresh_token_expires_at', {
+    mode: 'timestamp',
+  }),
+  scope: text('scope'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const verifications = sqliteTable('verifications', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }),
+});
+
+// ====================
+// RBAC Tables (Dynamic Roles & Permissions)
+// ====================
+
+export const roles = sqliteTable('roles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(), // e.g., "Administrador"
+  slug: text('slug').notNull().unique(), // e.g., "admin"
+  description: text('description'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const permissions = sqliteTable('permissions', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(), // e.g., "Registrar Participación"
+  slug: text('slug').notNull().unique(), // e.g., "participation:register"
+  description: text('description'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const rolePermissions = sqliteTable('role_permissions', {
+  id: text('id').primaryKey(),
+  roleId: text('role_id')
+    .notNull()
+    .references(() => roles.id, { onDelete: 'cascade' }),
+  permissionId: text('permission_id')
+    .notNull()
+    .references(() => permissions.id, { onDelete: 'cascade' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
@@ -196,6 +254,37 @@ export const csvListings = sqliteTable('csv_listings', {
 // ====================
 // Relations
 // ====================
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  roleData: one(roles, {
+    fields: [users.role],
+    references: [roles.slug],
+  }),
+  userCompanies: many(userCompanies),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  users: many(users),
+  rolePermissions: many(rolePermissions),
+}));
+
+export const permissionsRelations = relations(permissions, ({ many }) => ({
+  rolePermissions: many(rolePermissions),
+}));
+
+export const rolePermissionsRelations = relations(
+  rolePermissions,
+  ({ one }) => ({
+    role: one(roles, {
+      fields: [rolePermissions.roleId],
+      references: [roles.id],
+    }),
+    permission: one(permissions, {
+      fields: [rolePermissions.permissionId],
+      references: [permissions.id],
+    }),
+  }),
+);
 
 export const companiesRelations = relations(companies, ({ many }) => ({
   employees: many(employees),

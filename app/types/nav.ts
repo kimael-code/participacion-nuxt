@@ -3,22 +3,18 @@ export interface NavLink {
   link: string;
   icon?: string;
   new?: boolean;
-}
-
-export interface NavSectionTitle {
-  heading: string;
+  permission?: string;
 }
 
 export interface NavGroup {
   title: string;
   icon?: string;
-  new?: boolean;
   children: NavLink[];
+  new?: boolean;
+  permission?: string;
 }
 
-export interface NavMenu {
+export interface NavSectionTitle {
   heading: string;
-  items: NavMenuItems;
+  items: (NavLink | NavGroup)[];
 }
-
-export declare type NavMenuItems = (NavLink | NavGroup | NavSectionTitle)[];
