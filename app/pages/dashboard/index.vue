@@ -7,14 +7,41 @@ definePageMeta({
   title: 'Dashboard',
 });
 
-// TODO: Get from auth/company context
+const { activeEvent, allEvents, activateEvent } = useEvents();
+
+// Selected event for the dashboard
 const selectedEventId = ref<string | null>(null);
+
+// Automatically select the active event when loaded
+watch(
+  activeEvent,
+  (newActive) => {
+    if (newActive && !selectedEventId.value) {
+      selectedEventId.value = newActive.id;
+    }
+  },
+  { immediate: true },
+);
 
 // Connect to SSE for real-time stats
 const { stats, error } = useDashboardStats(selectedEventId);
 
+// Handle event selection change
+const handleEventChange = async (eventId: string) => {
+  selectedEventId.value = eventId;
+};
+
+// Handle set active event
+const handleSetActive = async (eventId: string) => {
+  const { success } = await activateEvent(eventId);
+  if (success) {
+    // Optionally show a toast
+  }
+};
+
 // Format percentage
 const formatPercentage = (value: number) => {
+  if (!value) return '0.0%';
   return `${value.toFixed(1)}%`;
 };
 </script>
@@ -25,14 +52,48 @@ const formatPercentage = (value: number) => {
 
     <!-- Event Selector -->
     <Card>
-      <CardHeader>
-        <CardTitle>Seleccionar Evento</CardTitle>
+      <CardHeader class="flex flex-row items-center justify-between space-y-0">
+        <CardTitle>Evento</CardTitle>
+        <div v-if="activeEvent" class="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            class="border-green-200 bg-green-50 text-green-700"
+          >
+            Activo: {{ activeEvent.name }}
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
-        <!-- TODO: Replace with actual event selector -->
-        <p class="text-sm text-muted-foreground">
-          Selector de eventos pendiente de implementar
-        </p>
+        <div class="flex items-center gap-4">
+          <Select
+            :model-value="selectedEventId || undefined"
+            @update:model-value="handleEventChange"
+          >
+            <SelectTrigger class="w-[300px]">
+              <SelectValue placeholder="Seleccionar evento..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="evt in allEvents"
+                :key="evt.id"
+                :value="evt.id"
+              >
+                {{ evt.name }} ({{
+                  new Date(evt.eventDate).toLocaleDateString()
+                }})
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            v-if="selectedEventId && selectedEventId !== activeEvent?.id"
+            variant="outline"
+            size="sm"
+            @click="handleSetActive(selectedEventId)"
+          >
+            Establecer como Activo
+          </Button>
+        </div>
       </CardContent>
     </Card>
 
@@ -112,11 +173,8 @@ const formatPercentage = (value: number) => {
           <CardTitle>Participación General</CardTitle>
         </CardHeader>
         <CardContent>
-          <!-- TODO: Add ECharts donut chart -->
-          <div
-            class="flex h-[300px] items-center justify-center text-muted-foreground"
-          >
-            Gráfica de participación general (ECharts)
+          <div class="h-[300px]">
+            <DashboardParticipationChart :stats="stats?.overall" />
           </div>
         </CardContent>
       </Card>
@@ -124,14 +182,11 @@ const formatPercentage = (value: number) => {
       <!-- By Unit Chart -->
       <Card>
         <CardHeader>
-          <CardTitle>Por Unidad Administrativa</CardTitle>
+          <CardTitle>Por Unidad Administrativa (Top 10)</CardTitle>
         </CardHeader>
         <CardContent>
-          <!-- TODO: Add ECharts bar chart -->
-          <div
-            class="flex h-[300px] items-center justify-center text-muted-foreground"
-          >
-            Gráfica por unidad administrativa (ECharts)
+          <div class="h-[300px]">
+            <DashboardUnitChart :units="stats?.byUnit" />
           </div>
         </CardContent>
       </Card>
