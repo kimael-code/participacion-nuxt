@@ -1,8 +1,19 @@
 <script setup lang="ts">
-import { useForm } from 'vee-validate';
+import { useForm, Field } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { toast } from 'vue-sonner';
+import { Switch } from '~/components/ui/switch';
+import { Label } from '~/components/ui/label';
+import { Input } from '~/components/ui/input';
+import { Textarea } from '~/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
 
 const props = defineProps<{
   open: boolean;
@@ -10,6 +21,7 @@ const props = defineProps<{
     id: string;
     name: string;
     date: string | Date;
+    type?: string;
     description?: string;
     active: boolean;
   } | null;
@@ -22,31 +34,53 @@ const validationSchema = toTypedSchema(
   z.object({
     name: z.string().min(3, 'Nombre requerido'),
     date: z.string().min(1, 'Fecha requerida'),
+    type: z.enum(['voting', 'medical', 'training', 'other']),
     description: z.string().optional(),
-    active: z.boolean().default(false),
+    active: z.boolean(),
   }),
 );
 
-const { handleSubmit, isSubmitting, setValues, resetForm } = useForm({
+const { handleSubmit, isSubmitting, resetForm } = useForm({
   validationSchema,
+  initialValues: {
+    name: '',
+    date: '',
+    type: 'voting' as const,
+    description: '',
+    active: false,
+  },
 });
 
 watch(
   () => props.event,
   (newVal) => {
     if (newVal) {
-      // Format date for input type="date"
-      const dateObj = new Date(newVal.date);
+      // Resolve properties from both possible names
+      const isActive =
+        (newVal as any).active ?? (newVal as any).isActive ?? false;
+      const rawDate = (newVal as any).date ?? (newVal as any).eventDate;
+      const dateObj = new Date(rawDate);
       const dateStr = dateObj.toISOString().split('T')[0];
 
-      setValues({
-        name: newVal.name,
-        date: dateStr,
-        description: newVal.description || '',
-        active: newVal.active,
+      resetForm({
+        values: {
+          name: newVal.name,
+          date: dateStr,
+          type: (newVal.type as any) || 'voting',
+          description: newVal.description || '',
+          active: !!isActive,
+        },
       });
     } else {
-      resetForm();
+      resetForm({
+        values: {
+          name: '',
+          date: '',
+          type: 'voting' as const,
+          description: '',
+          active: false,
+        },
+      });
     }
   },
   { immediate: true },
@@ -83,61 +117,78 @@ const onSubmit = handleSubmit(async (values) => {
         <DialogDescription> Registre una jornada o evento. </DialogDescription>
       </DialogHeader>
 
-      <form @submit="onSubmit" class="grid gap-4 py-4">
-        <FormField v-slot="{ componentField }" name="name">
-          <FormItem>
-            <FormLabel>Nombre del Evento</FormLabel>
-            <FormControl>
-              <Input
-                v-bind="componentField"
-                placeholder="Jornada Especial..."
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+      <form class="grid gap-4 py-4" @submit="onSubmit">
+        <Field v-slot="{ componentField, errorMessage }" name="name">
+          <div class="grid gap-2">
+            <Label for="name">Nombre del Evento</Label>
+            <Input
+              id="name"
+              v-bind="componentField"
+              placeholder="Jornada Especial..."
+            />
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
-        <FormField v-slot="{ componentField }" name="date">
-          <FormItem>
-            <FormLabel>Fecha</FormLabel>
-            <FormControl>
-              <Input type="date" v-bind="componentField" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <Field v-slot="{ componentField, errorMessage }" name="date">
+          <div class="grid gap-2">
+            <Label for="date">Fecha</Label>
+            <Input id="date" type="date" v-bind="componentField" />
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
-        <FormField v-slot="{ componentField }" name="description">
-          <FormItem>
-            <FormLabel>Descripción</FormLabel>
-            <FormControl>
-              <Textarea
-                v-bind="componentField"
-                placeholder="Detalles adicionales..."
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <Field v-slot="{ componentField, errorMessage }" name="type">
+          <div class="grid gap-2">
+            <Label for="type">Tipo de Evento</Label>
+            <Select v-bind="componentField">
+              <SelectTrigger id="type">
+                <SelectValue placeholder="Seleccione tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="voting">Votación</SelectItem>
+                <SelectItem value="medical">Médico/Salud</SelectItem>
+                <SelectItem value="training">Capacitación</SelectItem>
+                <SelectItem value="other">Otro</SelectItem>
+              </SelectContent>
+            </Select>
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
-        <FormField v-slot="{ componentField }" name="active">
-          <FormItem
+        <Field v-slot="{ componentField, errorMessage }" name="description">
+          <div class="grid gap-2">
+            <Label for="description">Descripción</Label>
+            <Textarea
+              id="description"
+              v-bind="componentField"
+              placeholder="Detalles adicionales..."
+            />
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
+
+        <Field v-slot="{ value, handleChange }" name="active">
+          <div
             class="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"
           >
             <div class="space-y-0.5">
-              <FormLabel>Activo</FormLabel>
-              <FormDescription>
+              <Label>Activo</Label>
+              <div class="text-[0.8rem] text-muted-foreground">
                 Marcar como evento activo actual.
-              </FormDescription>
+              </div>
             </div>
-            <FormControl>
-              <Switch
-                :checked="componentField.modelValue"
-                @update:checked="componentField['onUpdate:modelValue']"
-              />
-            </FormControl>
-          </FormItem>
-        </FormField>
+            <Switch :model-value="!!value" @update:model-value="handleChange" />
+          </div>
+        </Field>
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="emit('close')">

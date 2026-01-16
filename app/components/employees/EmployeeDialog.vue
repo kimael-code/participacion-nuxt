@@ -6,12 +6,14 @@ interface Props {
   open?: boolean;
   employee?: any;
   catalogs?: any;
+  activeEventType?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   open: false,
   employee: null,
   catalogs: () => ({ units: [], centers: [] }),
+  activeEventType: 'voting',
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -37,14 +39,34 @@ onMounted(() => {
       email: props.employee.email || '',
       phone: props.employee.phone || '',
       administrativeUnitId: props.employee.administrativeUnitId || '',
-      votingCenterId: props.employee.votingCenterId || '',
+      votingCenterId:
+        props.employee.locationId || props.employee.votingCenterId || '', // Map from locationId
     };
+  }
+});
+
+const locationLabel = computed(() => {
+  switch (props.activeEventType) {
+    case 'voting':
+      return 'Centro de Votación';
+    case 'medical':
+      return 'Centro Médico';
+    case 'training':
+      return 'Centro de Capacitación';
+    default:
+      return 'Ubicación';
   }
 });
 
 const handleSubmit = async () => {
   if (!form.value.cedula || !form.value.firstName || !form.value.lastName) {
     toast.error('Por favor complete los campos obligatorios');
+    return;
+  }
+
+  // Validate Voting Center if event type is voting
+  if (props.activeEventType === 'voting' && !form.value.votingCenterId) {
+    toast.error('El centro de votación es obligatorio para este evento');
     return;
   }
 
@@ -56,9 +78,15 @@ const handleSubmit = async () => {
 
     const method = props.employee ? 'PATCH' : 'POST';
 
+    // Map votingCenterId to locationId
+    const payload = {
+      ...form.value,
+      locationId: form.value.votingCenterId || null,
+    };
+
     await $fetch(url, {
       method,
-      body: form.value,
+      body: payload,
     });
 
     toast.success(props.employee ? 'Empleado actualizado' : 'Empleado creado');
@@ -143,7 +171,10 @@ const handleSubmit = async () => {
         </div>
 
         <div class="grid gap-2">
-          <Label for="center">Centro de Votación</Label>
+          <Label for="center"
+            >{{ locationLabel }}
+            <span v-if="activeEventType === 'voting'">*</span></Label
+          >
           <Select v-model="form.votingCenterId">
             <SelectTrigger id="center">
               <SelectValue placeholder="Seleccione centro" />
@@ -160,6 +191,12 @@ const handleSubmit = async () => {
               </SelectGroup>
             </SelectContent>
           </Select>
+          <p class="text-xs text-muted-foreground">
+            <span v-if="activeEventType === 'voting'"
+              >Obligatorio para eventos de votación.</span
+            >
+            <span v-else>Opcional.</span>
+          </p>
         </div>
 
         <DialogFooter class="mt-4">

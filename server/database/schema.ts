@@ -252,10 +252,20 @@ export const employees = sqliteTable('employees', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
+export const EventType = {
+  VOTING: 'voting',
+  MEDICAL: 'medical',
+  TRAINING: 'training',
+  OTHER: 'other',
+} as const;
+
+export type EventType = (typeof EventType)[keyof typeof EventType];
+
 export const events = sqliteTable('events', {
   id: text('id').primaryKey(),
   name: text('name').notNull().unique(),
   description: text('description'),
+  type: text('type').notNull().default('voting').$type<EventType>(), // Tipo de evento
   eventDate: integer('event_date', { mode: 'timestamp' }).notNull(),
   companyId: text('company_id')
     .notNull()

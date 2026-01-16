@@ -12,10 +12,13 @@ import {
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { usePermissions } from '~/composables/usePermissions';
+import { useEvents } from '~/composables/useEvents';
 
 definePageMeta({
   layout: 'dashboard',
 });
+
+const { activeEvent } = useEvents();
 
 interface Employee {
   id: string;
@@ -24,9 +27,9 @@ interface Employee {
   lastName: string;
   email?: string;
   administrativeUnit?: { name: string };
-  votingCenter?: { name: string };
+  location?: { name: string };
   administrativeUnitId?: string;
-  votingCenterId?: string;
+  locationId?: string;
 }
 
 interface Catalogs {
@@ -195,7 +198,7 @@ const { hasPermission } = usePermissions();
                   </div>
                   <div class="flex items-center text-xs text-muted-foreground">
                     <MapPin class="mr-1 h-3 w-3" />
-                    {{ employee.votingCenter?.name || 'N/A' }}
+                    {{ employee.location?.name || 'N/A' }}
                   </div>
                 </div>
               </TableCell>
@@ -280,6 +283,7 @@ const { hasPermission } = usePermissions();
       :open="showEmployeeDialog"
       :employee="editingEmployee"
       :catalogs="catalogs"
+      :active-event-type="activeEvent?.type || 'voting'"
       @close="showEmployeeDialog = false"
       @saved="handleSaved"
     />
