@@ -1,0 +1,3 @@
+cedula,firstName,lastName,email,phone,administrativeUnit,locationName,locationType,locationAddress,locationCapacity,locationNotes,state,municipality,parish,locationLat,locationLng
+V12345678,Juan,Pérez,juan@example.com,04121234567,Recursos Humanos,Centro Simón Bolívar,voting_center,Av. Libertador,500,Entrada principal,Lara,Iribarren,Catedral,10.067,-69.317
+V98765432,María,González,maria@email.com,,Finanzas,Clínica Razetti,medical_facility,Calle 20,50,Piso 2,Lara,Iribarren,Concepción,10.065,-69.320

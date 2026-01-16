@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
       where: whereClause,
       with: {
         administrativeUnit: true,
-        votingCenter: true,
+        location: true,
       },
       limit,
       offset,

@@ -29,8 +29,10 @@ const handleLogin = async () => {
       onError: (ctx) => {
         toast.error(ctx.error.message || 'Error al iniciar sesión');
       },
-      onSuccess: () => {
+      onSuccess: async () => {
         toast.success('Sesión iniciada con éxito');
+        // Redirigir al dashboard
+        await navigateTo('/dashboard');
       },
     },
   );

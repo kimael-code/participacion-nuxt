@@ -4,6 +4,8 @@ import {
   companies,
   employees,
   events,
+  locations,
+  LocationType,
   municipalities,
   nonParticipationReasons,
   parishes,
@@ -12,7 +14,6 @@ import {
   roles,
   states,
   userCompanies,
-  votingCenters,
 } from './schema';
 
 async function seed() {
@@ -237,15 +238,15 @@ async function seed() {
       createdUnits.push(unit);
     }
 
-    // 4. Centros de Votación
-    console.log('Inserting voting centers...');
+    // 5. Voting Centers
+    console.log('Inserting locations...');
     const centersList = [
       {
         name: 'Escuela Básica Ciudad de Barquisimeto',
         address: 'Av. Libertador',
       },
-      { name: 'Liceo Lisandro Alvarado', address: 'Carrera 15' },
-      { name: 'Colegio San Pedro', address: 'Urbanización del Este' },
+      { name: 'Liceo Bolivariano El Recreo', address: 'Calle 5' },
+      { name: 'Centro Comunitario La Paz', address: 'Av. Principal' },
     ];
 
     const createdCenters = [];
@@ -253,24 +254,22 @@ async function seed() {
       const randomParish =
         createdParishes[Math.floor(Math.random() * createdParishes.length)];
       const [c] = await db
-        .insert(votingCenters)
+        .insert(locations)
         .values({
           id: crypto.randomUUID(),
           name: center.name,
+          type: LocationType.VOTING_CENTER,
           address: center.address,
           parishId: randomParish.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
-        .onConflictDoUpdate({
-          target: votingCenters.name,
-          set: { address: center.address, updatedAt: new Date() },
-        })
+        .onConflictDoNothing()
         .returning();
       createdCenters.push(c);
     }
 
-    // 5. Empleados
+    // 6. Empleados
     console.log('Inserting employees...');
     const employeesCount = 50;
     for (let i = 0; i < employeesCount; i++) {

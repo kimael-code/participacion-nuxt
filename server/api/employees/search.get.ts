@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
     ),
     with: {
       administrativeUnit: true,
-      votingCenter: {
+      location: {
         with: {
           parish: {
             with: {

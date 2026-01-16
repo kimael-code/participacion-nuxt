@@ -2,7 +2,7 @@
 
 ## ✅ Completado Hasta Ahora
 
-### Fase 1: Infraestructura (95% completado)
+### Fase 1: Infraestructura (100% completado) ✅
 
 - ✅ Base de datos SQLite configurada con Drizzle ORM
 - ✅ Variables de entorno configuradas (`.env.example`)
@@ -12,7 +12,7 @@
   - `echarts`, `vue-echarts`
   - `jspdf`, `jspdf-autotable`
   - `papaparse`
-- ⏳ Pendiente: Configurar OAuth providers (Google, GitHub)
+- ✅ OAuth providers configurados (Google, GitHub)
 
 ### Fase 2: Base de Datos (100% completado)
 
@@ -26,38 +26,70 @@
 - ✅ Ejecutar migraciones
 - ✅ Crear seeds de datos de prueba
 
-### Fase 3: Backend/API (40% completado)
+### Fase 3: Backend/API (70% completado) ✅
 
 - ✅ `nuxt.config.ts` actualizado con runtimeConfig
 - ✅ Better-auth configurado (`server/auth.ts`)
 - ✅ API de autenticación (`/api/auth/[...all]`)
 - ✅ **SSE endpoint** para dashboard en tiempo real (`/api/dashboard/stats`)
-- ✅ API de búsqueda de empleados (`/api/employees/search`)
+- ✅ **CRUD completo de empleados** (7 endpoints):
+  - GET `/api/employees` - Listado con paginación
+  - GET `/api/employees/search` - Búsqueda por cédula
+  - GET `/api/employees/catalogs` - Catálogos para formularios
+  - POST `/api/employees` - Crear empleado
+  - PATCH `/api/employees/[id]` - Actualizar
+  - DELETE `/api/employees/[id]` - Eliminar
+  - POST `/api/employees/batch` - Importación masiva CSV
 - ✅ API de registro de participación (`/api/participations`)
-- ✅ CRUD completo de catálogos (Básico vía Seed)
-- ⏳ Pendiente: UI para gestión de empleados y CSV/PDF extensiones
+- ✅ API de eventos (GET, POST)
+- ⚠️ API de reportes (parcial)
+- ⏳ Pendiente: APIs de unidades administrativas, centros de votación, empresas
 
-### Fase 4: Autenticación (50% completado)
+### Fase 4: Autenticación (100% completado) ✅
 
-- ✅ Better-auth configurado con Google y GitHub
-- ✅ Páginas de login/logout, protección de rutas y Middleware RBAC
-- ✅ Roles y Permisos dinámicos implementados
+- ✅ Better-auth configurado con Google y GitHub OAuth
+- ✅ Páginas de login/register funcionales
+- ✅ Middleware global de protección de rutas (`auth.global.ts`)
+- ✅ **Sistema RBAC completo**:
+  - Tablas: `roles`, `permissions`, `rolePermissions`
+  - Composable `usePermissions.ts`
+  - Roles dinámicos por usuario
+  - Permisos granulares por funcionalidad
 
-### Fase 6: Registro de Participación (60% completado)
+### Fase 5: Gestión de Datos Maestros (40% completado) ⚠️
+
+- ✅ **Gestión de Empleados** (100% completo):
+  - Página completa `/dashboard/employees`
+  - Tabla con paginación, búsqueda y filtros
+  - CRUD completo (crear, editar, eliminar)
+  - Importación masiva CSV
+  - Componentes: `EmployeeDialog.vue`, `ImportEmployeesDialog.vue`
+- ⏳ Pendiente:
+  - Selector de empresa en sidebar
+  - Gestión de empresas (UI)
+  - Gestión de unidades administrativas (UI)
+  - Gestión de eventos (UI completa)
+  - Gestión de centros de votación (UI)
+
+### Fase 6: Registro de Participación (100% completado) ✅
 
 - ✅ Composable `useEmployeeSearch` optimizado
 - ✅ Composable `useParticipationRegistration` integrado
 - ✅ API de registro y búsqueda asegurada por compañía
 - ✅ UI de búsqueda y registro completa (/dashboard/participation/register)
 
-### Fase 7: Dashboard (70% completado)
+### Fase 7: Dashboard (90% completado) ✅
 
 - ✅ Composable `useDashboardStats` con SSE
 - ✅ Página de dashboard con layout completo
 - ✅ Stats cards (participaron, pendientes, no participaron)
 - ✅ Tabla de unidades administrativas
 - ✅ Indicador de conexión en tiempo real
-- ⏳ Pendiente: Gráficas con ECharts, selector de eventos
+- ✅ **Gráficas con ECharts**:
+  - `ParticipationChart.vue` - Gráfica donut
+  - `UnitChart.vue` - Gráfica de barras
+  - Plugin `echarts.ts` configurado
+- ⏳ Pendiente: Mejorar selector de eventos
 
 ---
 
@@ -182,17 +214,17 @@ pnpm lint:fix
 
 ## 📊 Progreso General
 
-- **Fase 1**: ████████░░ 90%
-- **Fase 2**: ██████████ 100%
-- **Fase 3**: █████░░░░░ 50%
-- **Fase 4**: ██████████ 100%
-- **Fase 5**: ░░░░░░░░░░ 0%
-- **Fase 6**: ██████████ 100%
-- **Fase 7**: ████████░░ 80%
-- **Fase 8**: ░░░░░░░░░░ 0%
-- **Fase 9**: ░░░░░░░░░░ 0%
-- **Fase 10**: ░░░░░░░░░░ 0%
-- **Fase 11**: ░░░░░░░░░░ 0%
-- **Fase 12**: ░░░░░░░░░░ 0%
+- **Fase 1**: ██████████ 100% ✅
+- **Fase 2**: ██████████ 100% ✅
+- **Fase 3**: ███████░░░ 70% ✅
+- **Fase 4**: ██████████ 100% ✅
+- **Fase 5**: ████░░░░░░ 40% ⚠️
+- **Fase 6**: ██████████ 100% ✅
+- **Fase 7**: █████████░ 90% ✅
+- **Fase 8**: ██░░░░░░░░ 20% ⚠️
+- **Fase 9**: ███░░░░░░░ 30% ⚠️
+- **Fase 10**: ░░░░░░░░░░ 0% ❌
+- **Fase 11**: ░░░░░░░░░░ 0% ❌
+- **Fase 12**: ░░░░░░░░░░ 0% ❌
 
-**Progreso Total**: ████░░░░░░ 38%
+**Progreso Total**: ██████░░░░ 58%

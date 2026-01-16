@@ -180,15 +180,32 @@ export const parishes = sqliteTable(
   }),
 );
 
-export const votingCenters = sqliteTable('voting_centers', {
+// Tipos de ubicaciones soportadas
+export const LocationType = {
+  VOTING_CENTER: 'voting_center',
+  MEDICAL_FACILITY: 'medical_facility',
+  CONFERENCE_ROOM: 'conference_room',
+  AUDITORIUM: 'auditorium',
+  TRAINING_CENTER: 'training_center',
+  OFFICE: 'office',
+  OTHER: 'other',
+} as const;
+
+export type LocationType = (typeof LocationType)[keyof typeof LocationType];
+
+// Tabla genérica de ubicaciones (antes voting_centers)
+export const locations = sqliteTable('locations', {
   id: text('id').primaryKey(),
-  name: text('name').notNull().unique(),
+  name: text('name').notNull(),
+  type: text('type').notNull().$type<LocationType>(), // Tipo de ubicación
   address: text('address').notNull(),
   parishId: text('parish_id')
     .notNull()
     .references(() => parishes.id),
   latitude: real('latitude'), // Opcional para mapas
   longitude: real('longitude'), // Opcional para mapas
+  capacity: integer('capacity'), // Capacidad del lugar (opcional)
+  notes: text('notes'), // Notas adicionales
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -230,7 +247,7 @@ export const employees = sqliteTable('employees', {
   administrativeUnitId: text('administrative_unit_id').references(
     () => administrativeUnits.id,
   ),
-  votingCenterId: text('voting_center_id').references(() => votingCenters.id), // Opcional
+  locationId: text('location_id').references(() => locations.id), // Ubicación del empleado (opcional)
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -288,6 +305,8 @@ export const csvListings = sqliteTable('csv_listings', {
     .references(() => events.id, { onDelete: 'cascade' }),
   fileName: text('file_name').notNull(),
   recordCount: integer('record_count').notNull(),
+  listingType: text('listing_type').notNull().default('participation'), // 'participation' or 'non_participation'
+  sequenceNumber: integer('sequence_number').notNull().default(1),
   generatedBy: text('generated_by').references(() => users.id),
   generatedAt: integer('generated_at', { mode: 'timestamp' }).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
@@ -366,19 +385,16 @@ export const parishesRelations = relations(parishes, ({ one, many }) => ({
     fields: [parishes.municipalityId],
     references: [municipalities.id],
   }),
-  votingCenters: many(votingCenters),
+  locations: many(locations),
 }));
 
-export const votingCentersRelations = relations(
-  votingCenters,
-  ({ one, many }) => ({
-    parish: one(parishes, {
-      fields: [votingCenters.parishId],
-      references: [parishes.id],
-    }),
-    employees: many(employees),
+export const locationsRelations = relations(locations, ({ one, many }) => ({
+  parish: one(parishes, {
+    fields: [locations.parishId],
+    references: [parishes.id],
   }),
-);
+  employees: many(employees),
+}));
 
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   company: one(companies, {
@@ -389,9 +405,9 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
     fields: [employees.administrativeUnitId],
     references: [administrativeUnits.id],
   }),
-  votingCenter: one(votingCenters, {
-    fields: [employees.votingCenterId],
-    references: [votingCenters.id],
+  location: one(locations, {
+    fields: [employees.locationId],
+    references: [locations.id],
   }),
   participations: many(participations),
 }));

@@ -27,7 +27,8 @@ watch(
 const { stats, error } = useDashboardStats(selectedEventId);
 
 // Handle event selection change
-const handleEventChange = async (eventId: string) => {
+const handleEventChange = async (value: any) => {
+  const eventId = String(value);
   selectedEventId.value = eventId;
 };
 
@@ -65,25 +66,27 @@ const formatPercentage = (value: number) => {
       </CardHeader>
       <CardContent>
         <div class="flex items-center gap-4">
-          <Select
-            :model-value="selectedEventId || undefined"
-            @update:model-value="handleEventChange"
-          >
-            <SelectTrigger class="w-[300px]">
-              <SelectValue placeholder="Seleccionar evento..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem
-                v-for="evt in allEvents"
-                :key="evt.id"
-                :value="evt.id"
-              >
-                {{ evt.name }} ({{
-                  new Date(evt.eventDate).toLocaleDateString()
-                }})
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <ClientOnly>
+            <Select
+              :model-value="selectedEventId || undefined"
+              @update:model-value="handleEventChange"
+            >
+              <SelectTrigger class="w-[300px]">
+                <SelectValue placeholder="Seleccionar evento..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="evt in allEvents"
+                  :key="evt.id"
+                  :value="evt.id"
+                >
+                  {{ evt.name }} ({{
+                    new Date(evt.eventDate).toLocaleDateString()
+                  }})
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </ClientOnly>
 
           <Button
             v-if="selectedEventId && selectedEventId !== activeEvent?.id"

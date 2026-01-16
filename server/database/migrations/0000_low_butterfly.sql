@@ -25,6 +25,7 @@ CREATE TABLE `administrative_units` (
 	FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `name_company_idx` ON `administrative_units` (`name`,`company_id`);--> statement-breakpoint
 CREATE TABLE `companies` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -34,6 +35,7 @@ CREATE TABLE `companies` (
 	`updated_at` integer NOT NULL
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `companies_rif_unique` ON `companies` (`rif`);--> statement-breakpoint
 CREATE TABLE `csv_listings` (
 	`id` text PRIMARY KEY NOT NULL,
 	`event_id` text NOT NULL,
@@ -55,14 +57,15 @@ CREATE TABLE `employees` (
 	`phone` text,
 	`company_id` text NOT NULL,
 	`administrative_unit_id` text,
-	`voting_center_id` text,
+	`location_id` text,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`administrative_unit_id`) REFERENCES `administrative_units`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`voting_center_id`) REFERENCES `voting_centers`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`location_id`) REFERENCES `locations`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `employees_cedula_unique` ON `employees` (`cedula`);--> statement-breakpoint
 CREATE TABLE `events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -75,6 +78,22 @@ CREATE TABLE `events` (
 	FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `events_name_unique` ON `events` (`name`);--> statement-breakpoint
+CREATE TABLE `locations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`type` text NOT NULL,
+	`address` text NOT NULL,
+	`parish_id` text NOT NULL,
+	`latitude` real,
+	`longitude` real,
+	`capacity` integer,
+	`notes` text,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`parish_id`) REFERENCES `parishes`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
 CREATE TABLE `municipalities` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -82,6 +101,7 @@ CREATE TABLE `municipalities` (
 	FOREIGN KEY (`state_id`) REFERENCES `states`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `name_state_idx` ON `municipalities` (`name`,`state_id`);--> statement-breakpoint
 CREATE TABLE `non_participation_reasons` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -96,6 +116,7 @@ CREATE TABLE `parishes` (
 	FOREIGN KEY (`municipality_id`) REFERENCES `municipalities`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `name_municipality_idx` ON `parishes` (`name`,`municipality_id`);--> statement-breakpoint
 CREATE TABLE `participations` (
 	`id` text PRIMARY KEY NOT NULL,
 	`employee_id` text NOT NULL,
@@ -113,6 +134,35 @@ CREATE TABLE `participations` (
 	FOREIGN KEY (`registered_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE TABLE `permissions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`slug` text NOT NULL,
+	`description` text,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `permissions_slug_unique` ON `permissions` (`slug`);--> statement-breakpoint
+CREATE TABLE `role_permissions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`role_id` text NOT NULL,
+	`permission_id` text NOT NULL,
+	`created_at` integer NOT NULL,
+	FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `roles` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`slug` text NOT NULL,
+	`description` text,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `roles_slug_unique` ON `roles` (`slug`);--> statement-breakpoint
 CREATE TABLE `sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -132,6 +182,7 @@ CREATE TABLE `states` (
 	`code` text
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `states_name_unique` ON `states` (`name`);--> statement-breakpoint
 CREATE TABLE `user_companies` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -142,12 +193,17 @@ CREATE TABLE `user_companies` (
 	FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `user_company_idx` ON `user_companies` (`user_id`,`company_id`);--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,
 	`email_verified` integer DEFAULT false NOT NULL,
 	`name` text NOT NULL,
 	`image` text,
+	`role` text DEFAULT 'user',
+	`banned` integer DEFAULT false,
+	`ban_reason` text,
+	`ban_expires` integer,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL
 );
@@ -160,16 +216,4 @@ CREATE TABLE `verifications` (
 	`expires_at` integer NOT NULL,
 	`created_at` integer,
 	`updated_at` integer
-);
---> statement-breakpoint
-CREATE TABLE `voting_centers` (
-	`id` text PRIMARY KEY NOT NULL,
-	`name` text NOT NULL,
-	`address` text NOT NULL,
-	`parish_id` text NOT NULL,
-	`latitude` real,
-	`longitude` real,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`parish_id`) REFERENCES `parishes`(`id`) ON UPDATE no action ON DELETE no action
 );

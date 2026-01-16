@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
       where: eq(administrativeUnits.companyId, companyId),
       orderBy: (records, { asc }) => [asc(records.name)],
     }),
-    db.query.votingCenters.findMany({
+    db.query.locations.findMany({
       orderBy: (records, { asc }) => [asc(records.name)],
     }),
   ]);

@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
       phone: body.phone,
       companyId: companyId,
       administrativeUnitId: body.administrativeUnitId,
-      votingCenterId: body.votingCenterId,
+      locationId: body.locationId,
       createdAt: new Date(),
       updatedAt: new Date(),
     })

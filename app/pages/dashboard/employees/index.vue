@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import {
   Plus,
-  FileUp,
   Search,
   Filter,
   MoreHorizontal,
@@ -60,7 +59,6 @@ const {
 );
 
 const showEmployeeDialog = ref(false);
-const showImportDialog = ref(false);
 const editingEmployee = ref<Employee | null>(null);
 
 const handleEdit = (employee: Employee) => {
@@ -99,10 +97,6 @@ const { hasPermission } = usePermissions();
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <Button v-if="hasPermission('employees:manage')" variant="outline" @click="showImportDialog = true">
-          <FileUp class="mr-2 h-4 w-4" />
-          Importar CSV
-        </Button>
         <Button
           v-if="hasPermission('employees:manage')"
           @click="
@@ -213,7 +207,10 @@ const { hasPermission } = usePermissions();
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem v-if="hasPermission('employees:manage')" @click="handleEdit(employee)">
+                    <DropdownMenuItem
+                      v-if="hasPermission('employees:manage')"
+                      @click="handleEdit(employee)"
+                    >
                       <Pencil class="mr-2 h-4 w-4" /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -285,13 +282,6 @@ const { hasPermission } = usePermissions();
       :catalogs="catalogs"
       @close="showEmployeeDialog = false"
       @saved="handleSaved"
-    />
-
-    <EmployeesImportEmployeesDialog
-      v-if="showImportDialog"
-      :open="showImportDialog"
-      @close="showImportDialog = false"
-      @imported="refresh"
     />
   </div>
 </template>

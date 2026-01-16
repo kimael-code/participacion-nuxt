@@ -25,7 +25,15 @@ const { setOpenMobile } = useSidebar();
         :size="size"
         :data-active="item.link === $route.path"
       >
-        <NuxtLink :to="item.link" @click="setOpenMobile(false)">
+        <NuxtLink
+          :to="item.link"
+          @click="
+            () => {
+              console.log('Clicking nav item:', item.title, item.link);
+              setOpenMobile && setOpenMobile(false);
+            }
+          "
+        >
           <Icon v-if="item.icon" :name="item.icon" />
           <span>{{ item.title }}</span>
           <span

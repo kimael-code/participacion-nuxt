@@ -17,25 +17,26 @@
   - [x] `echarts` y `vue-echarts`
   - [x] `jspdf` y `jspdf-autotable`
   - [x] `papaparse` (para CSV)
-- [ ] Configurar Turso database
-  - [ ] Crear cuenta en Turso
-  - [ ] Crear base de datos de desarrollo
-  - [ ] Obtener URL y auth token
+- [x] Configurar Turso database
+  - [x] Crear cuenta en Turso
+  - [x] Crear base de datos de desarrollo
+  - [x] Obtener URL y auth token
 - [x] Configurar Drizzle ORM
   - [x] Crear `drizzle.config.ts`
   - [x] Crear `server/utils/db.ts`
-- [ ] Configurar better-auth
-  - [ ] Crear `server/auth.ts`
-  - [ ] Configurar OAuth providers (Google, GitHub)
-- [ ] Actualizar `nuxt.config.ts`
-  - [ ] Agregar runtime config
-  - [ ] Configurar módulos necesarios
+- [x] Configurar better-auth
+  - [x] Crear `server/auth.ts`
+  - [x] Configurar OAuth providers (Google, GitHub)
+- [x] Actualizar `nuxt.config.ts`
+  - [x] Agregar runtime config
+  - [x] Configurar módulos necesarios
 - [x] Crear `.env.example` con variables requeridas
 
 ## Fase 2: Diseño de Base de Datos
 
-- [/] Diseñar esquema de base de datos en `server/database/schema.ts`
+- [x] Diseñar esquema de base de datos en `server/database/schema.ts`
   - [x] Tabla de usuarios (better-auth)
+  - [x] Tablas RBAC: `roles`, `permissions`, `rolePermissions`
   - [x] Tabla de empresas (companies) - multi-tenancy
   - [x] Tabla de relación user-companies (many-to-many)
   - [x] Tabla de trabajadores (employees) con FK a company
@@ -53,10 +54,10 @@
   - [x] Tabla de motivos de no participación
   - [x] Tabla de listados CSV emitidos
   - [x] Definir todas las relaciones multi-tenancy y geográficas
-- [ ] Generar migraciones con Drizzle
-- [ ] Crear script de seeds
-  - [ ] Datos de prueba (2-3 empresas)
-  - [ ] Catálogo completo de estados, municipios y parroquias
+- [x] Generar migraciones con Drizzle
+- [x] Crear script de seeds
+  - [x] Datos de prueba (2-3 empresas)
+  - [x] Catálogo completo de estados, municipios y parroquias
 
 ## Fase 3: Backend/API
 
@@ -70,38 +71,45 @@
   - [ ] `POST /api/companies` (crear)
   - [ ] `PUT /api/companies/:id` (actualizar)
   - [ ] `DELETE /api/companies/:id` (eliminar)
-- [ ] Implementar API routes para empleados
-  - [ ] `GET /api/employees` (filtrado por empresa activa)
-  - [ ] `GET /api/employees/:id` (detalle)
-  - [ ] `GET /api/employees/search` (búsqueda por cédula)
-  - [ ] `POST /api/employees` (crear)
-  - [ ] `PUT /api/employees/:id` (actualizar)
-  - [ ] `DELETE /api/employees/:id` (eliminar)
-  - [ ] `POST /api/employees/import` (importación CSV)
+- [x] Implementar API routes para empleados
+  - [x] `GET /api/employees` (filtrado por empresa activa)
+  - [x] `GET /api/employees/catalogs` (catálogos para formularios)
+  - [x] `GET /api/employees/search` (búsqueda por cédula)
+  - [x] `POST /api/employees` (crear)
+  - [x] `PATCH /api/employees/:id` (actualizar)
+  - [x] `DELETE /api/employees/:id` (eliminar)
+  - [x] `POST /api/employees/batch` (importación CSV)
 - [ ] Implementar API routes para unidades administrativas (CRUD, por empresa)
-- [ ] Implementar API routes para eventos (CRUD, por empresa)
+- [/] Implementar API routes para eventos (CRUD, por empresa)
+  - [x] `GET /api/events` (listar)
+  - [x] `POST /api/events` (crear)
+  - [ ] Completar CRUD
 - [ ] Implementar API routes para centros de votación (CRUD)
   - [ ] Incluir JOINs para obtener ubicación completa (state, municipality, parish)
-- [ ] Implementar API routes para participación
-  - [ ] `POST /api/participations` (registrar)
+- [x] Implementar API routes para participación
+  - [x] `POST /api/participations` (registrar)
   - [ ] `PUT /api/participations/:id` (actualizar)
-  - [ ] `GET /api/participations/stats` (estadísticas por empresa)
-- [ ] Implementar SSE endpoint para dashboard
-  - [ ] `GET /api/dashboard/stream` (Server-Sent Events, por empresa)
-- [ ] Implementar generación de listados CSV
-  - [ ] `POST /api/listings/generate`
-- [ ] Implementar middleware de autenticación
+  - [x] Estadísticas integradas en dashboard
+- [x] Implementar SSE endpoint para dashboard
+  - [x] `GET /api/dashboard/stats` (Server-Sent Events)
+- [/] Implementar generación de listados CSV
+  - [/] `GET /api/reports` (parcial)
+- [x] Implementar middleware de autenticación
 - [ ] Implementar middleware de verificación de acceso a empresa
-- [ ] Implementar validaciones con Zod
+- [x] Implementar validaciones con Zod
 
 ## Fase 4: Sistema de Autenticación
 
-- [ ] Configurar páginas de autenticación
-  - [ ] Actualizar `/login` con botones OAuth
-  - [ ] Configurar callbacks de OAuth
-- [ ] Crear composable `useAuth.ts`
-- [ ] Implementar middleware global de protección de rutas
-- [ ] Configurar redirecciones post-login
+- [x] Configurar páginas de autenticación
+  - [x] Actualizar `/login` con botones OAuth
+  - [x] Página `/register` funcional
+  - [x] Configurar callbacks de OAuth
+- [x] Crear cliente de autenticación `auth-client.ts`
+- [x] Implementar middleware global de protección de rutas
+- [x] Configurar redirecciones post-login
+- [x] Sistema RBAC completo
+  - [x] Composable `usePermissions.ts`
+  - [x] Tablas de roles y permisos
 
 ## Fase 5: Gestión de Datos Maestros
 
@@ -114,46 +122,47 @@
   - [ ] Formulario de creación/edición
   - [ ] Upload de logo
   - [ ] Validación RIF/NIT
-- [ ] Página de gestión de empleados (`/employees`)
-  - [ ] Listado con tabla (filtrado por empresa activa)
-  - [ ] Búsqueda y filtros
-  - [ ] Formulario de creación/edición
-  - [ ] Importación masiva CSV
-  - [ ] Validación de cédulas
+- [x] Página de gestión de empleados (`/dashboard/employees`)
+  - [x] Listado con tabla (filtrado por empresa activa)
+  - [x] Búsqueda y filtros
+  - [x] Formulario de creación/edición (EmployeeDialog.vue)
+  - [x] Importación masiva CSV (ImportEmployeesDialog.vue)
+  - [x] Validación de cédulas
 - [ ] Página de gestión de unidades administrativas
-- [ ] Página de gestión de eventos
+- [/] Página de gestión de eventos (parcial)
 - [ ] Página de gestión de centros de votación
 
 ## Fase 6: Sistema de Registro de Participación
 
-- [ ] Crear página `/participation/register`
-- [ ] Implementar componente `ParticipationSearch.vue`
-  - [ ] Input de cédula con debounce
-  - [ ] Búsqueda en tiempo real
-  - [ ] Mostrar resultados instantáneos
-- [ ] Implementar componente `ParticipationActions.vue`
-  - [ ] Botón "Participó"
-  - [ ] Botón "No Participó" con modal de motivos
-  - [ ] Confirmaciones visuales
-- [ ] Implementar historial reciente de participaciones
+- [x] Crear página `/dashboard/participation/register`
+- [x] Implementar composable `useEmployeeSearch.ts`
+  - [x] Input de cédula con debounce
+  - [x] Búsqueda en tiempo real
+  - [x] Mostrar resultados instantáneos
+- [x] Implementar composable `useParticipationRegistration.ts`
+  - [x] Botón "Participó"
+  - [x] Botón "No Participó" con modal de motivos
+  - [x] Confirmaciones visuales
+- [x] Implementar historial reciente de participaciones
 
 ## Fase 7: Dashboard en Tiempo Real
 
-- [ ] Crear página `/dashboard`
-- [ ] Implementar composable `useDashboardSSE.ts`
-  - [ ] Conexión SSE al endpoint
-  - [ ] Manejo de eventos
-  - [ ] Reconexión automática
-- [ ] Implementar componente `StatsCards.vue`
-  - [ ] Indicadores numéricos
-  - [ ] Actualizaciones en tiempo real
-- [ ] Implementar gráficas con Apache ECharts
-  - [ ] `ParticipationChart.vue` (donut/pie chart)
-  - [ ] `UnitChart.vue` (bar chart)
-  - [ ] Animaciones fluidas
-- [ ] Implementar selector de evento
-- [ ] Implementar tabla de unidades con % participación
-- [ ] Agregar indicador de conexión SSE activa
+- [x] Crear página `/dashboard`
+- [x] Implementar composable `useDashboardStats.ts`
+  - [x] Conexión SSE al endpoint
+  - [x] Manejo de eventos
+  - [x] Reconexión automática
+- [x] Implementar stats cards integradas
+  - [x] Indicadores numéricos
+  - [x] Actualizaciones en tiempo real
+- [x] Implementar gráficas con Apache ECharts
+  - [x] `ParticipationChart.vue` (donut/pie chart)
+  - [x] `UnitChart.vue` (bar chart)
+  - [x] Plugin `echarts.ts` configurado
+  - [x] Animaciones fluidas
+- [/] Implementar selector de evento (mejorar)
+- [x] Implementar tabla de unidades con % participación
+- [x] Agregar indicador de conexión SSE activa
 
 ## Fase 8: Sistema de Listados CSV
 

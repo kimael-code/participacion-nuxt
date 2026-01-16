@@ -1,0 +1,38 @@
+import { desc, eq } from 'drizzle-orm';
+import { z } from 'zod';
+import { auth } from '~/server/auth';
+import { csvListings, users } from '~/server/database/schema';
+import { db } from '~/server/utils/db';
+
+const querySchema = z.object({
+  eventId: z.string(),
+});
+
+export default defineEventHandler(async (event) => {
+  const session = await auth.api.getSession({ headers: event.headers });
+  if (!session) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' });
+  }
+
+  const query = await getValidatedQuery(event, (q) => querySchema.parse(q));
+
+  const results = await db
+    .select({
+      id: csvListings.id,
+      sequenceNumber: csvListings.sequenceNumber,
+      listingType: csvListings.listingType, // 'participation' | 'non_participation'
+      fileName: csvListings.fileName,
+      recordCount: csvListings.recordCount,
+      generatedAt: csvListings.generatedAt,
+      generatedBy: {
+        name: users.name,
+        email: users.email,
+      },
+    })
+    .from(csvListings)
+    .leftJoin(users, eq(csvListings.generatedBy, users.id))
+    .where(eq(csvListings.eventId, query.eventId))
+    .orderBy(desc(csvListings.sequenceNumber));
+
+  return results;
+});

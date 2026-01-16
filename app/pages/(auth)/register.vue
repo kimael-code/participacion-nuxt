@@ -20,28 +20,46 @@ const handleRegister = async () => {
   }
 
   isLoading.value = true;
-  await authClient.signUp.email(
-    {
+
+  try {
+    // 1. Registrar usuario
+    const signUpResult = await authClient.signUp.email({
       email: email.value,
       name: name.value,
       password: password.value,
-      callbackURL: '/dashboard',
-    },
-    {
-      onRequest: () => {
-        isLoading.value = true;
-      },
-      onResponse: () => {
-        isLoading.value = false;
-      },
-      onError: (ctx) => {
-        toast.error(ctx.error.message || 'Error al crear la cuenta');
-      },
-      onSuccess: () => {
-        toast.success('Cuenta creada exitosamente');
-      },
-    },
-  );
+    });
+
+    if (signUpResult.error) {
+      toast.error(signUpResult.error.message || 'Error al crear la cuenta');
+      isLoading.value = false;
+      return;
+    }
+
+    toast.success('Cuenta creada exitosamente');
+
+    // 2. Iniciar sesión automáticamente
+    const signInResult = await authClient.signIn.email({
+      email: email.value,
+      password: password.value,
+    });
+
+    if (signInResult.error) {
+      toast.error(
+        'Cuenta creada, pero hubo un error al iniciar sesión. Por favor, inicia sesión manualmente.',
+      );
+      await navigateTo('/login');
+      return;
+    }
+
+    // 3. Redirigir al dashboard
+    toast.success('¡Bienvenido!');
+    await navigateTo('/dashboard');
+  } catch (error) {
+    toast.error('Error inesperado al crear la cuenta');
+    console.error(error);
+  } finally {
+    isLoading.value = false;
+  }
 };
 </script>
 

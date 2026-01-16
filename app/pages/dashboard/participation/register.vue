@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import { useEmployeeSearch } from '~/composables/useEmployeeSearch';
 import { useParticipationRegistration } from '~/composables/useParticipationRegistration';
+import { useParticipationHistory } from '~/composables/useParticipationHistory';
 import { toast } from 'vue-sonner';
 
 definePageMeta({
@@ -47,6 +48,13 @@ const activeEmployeeId = ref<string | null>(null);
 const { searchQuery, isSearching, results } = useEmployeeSearch();
 
 const { registerParticipation, isSubmitting } = useParticipationRegistration();
+const { recentParticipations, fetchRecent, deleteParticipation } =
+  useParticipationHistory();
+
+// Refresh history when even changes
+watch(selectedEventId, (newId) => {
+  if (newId) fetchRecent(newId);
+});
 
 const handleRegister = async (employeeId: string, participated: boolean) => {
   if (!selectedEventId.value) {
@@ -66,6 +74,8 @@ const handleRegister = async (employeeId: string, participated: boolean) => {
       eventId: selectedEventId.value,
       participated: true,
     });
+    // Refresh history
+    fetchRecent(selectedEventId.value);
   } catch (error) {
     // handled by composable
   }
@@ -93,6 +103,7 @@ const submitNoParticipation = async () => {
     activeEmployeeId.value = null;
     selectedReasonId.value = '';
     registrationNotes.value = '';
+    fetchRecent(selectedEventId.value);
   } catch (error) {
     // handled by composable
   }

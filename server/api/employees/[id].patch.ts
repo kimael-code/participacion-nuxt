@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
       email: body.email,
       phone: body.phone,
       administrativeUnitId: body.administrativeUnitId,
-      votingCenterId: body.votingCenterId,
+      locationId: body.locationId,
       updatedAt: new Date(),
     })
     .where(and(eq(employees.id, id), eq(employees.companyId, companyId)))

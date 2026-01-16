@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "a50e1a56-65ef-4d53-a4ad-b3ae929d07ed",
-  "prevId": "e63757c5-22ae-42ca-af47-62b17fd208ef",
+  "id": "b4dbf6b3-1226-4ec7-8d85-cb458ba4e350",
+  "prevId": "53ec0d38-1b03-4137-8cb0-ca696b2a69d6",
   "tables": {
     "accounts": {
       "name": "accounts",
@@ -165,7 +165,16 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "name_company_idx": {
+          "name": "name_company_idx",
+          "columns": [
+            "name",
+            "company_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "administrative_units_company_id_companies_id_fk": {
           "name": "administrative_units_company_id_companies_id_fk",
@@ -231,7 +240,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "companies_rif_unique": {
+          "name": "companies_rif_unique",
+          "columns": [
+            "rif"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -267,6 +284,22 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "listing_type": {
+          "name": "listing_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'participation'"
+        },
+        "sequence_number": {
+          "name": "sequence_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
         },
         "generated_by": {
           "name": "generated_by",
@@ -382,8 +415,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "voting_center_id": {
-          "name": "voting_center_id",
+        "location_id": {
+          "name": "location_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -404,7 +437,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "employees_cedula_unique": {
+          "name": "employees_cedula_unique",
+          "columns": [
+            "cedula"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "employees_company_id_companies_id_fk": {
           "name": "employees_company_id_companies_id_fk",
@@ -432,12 +473,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "employees_voting_center_id_voting_centers_id_fk": {
-          "name": "employees_voting_center_id_voting_centers_id_fk",
+        "employees_location_id_locations_id_fk": {
+          "name": "employees_location_id_locations_id_fk",
           "tableFrom": "employees",
-          "tableTo": "voting_centers",
+          "tableTo": "locations",
           "columnsFrom": [
-            "voting_center_id"
+            "location_id"
           ],
           "columnsTo": [
             "id"
@@ -511,7 +552,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "events_name_unique": {
+          "name": "events_name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "events_company_id_companies_id_fk": {
           "name": "events_company_id_companies_id_fk",
@@ -524,6 +573,107 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "locations": {
+      "name": "locations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parish_id": {
+          "name": "parish_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "locations_parish_id_parishes_id_fk": {
+          "name": "locations_parish_id_parishes_id_fk",
+          "tableFrom": "locations",
+          "tableTo": "parishes",
+          "columnsFrom": [
+            "parish_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -556,7 +706,16 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "name_state_idx": {
+          "name": "name_state_idx",
+          "columns": [
+            "name",
+            "state_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "municipalities_state_id_states_id_fk": {
           "name": "municipalities_state_id_states_id_fk",
@@ -639,7 +798,16 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "name_municipality_idx": {
+          "name": "name_municipality_idx",
+          "columns": [
+            "name",
+            "municipality_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "parishes_municipality_id_municipalities_id_fk": {
           "name": "parishes_municipality_id_municipalities_id_fk",
@@ -1090,7 +1258,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "states_name_unique": {
+          "name": "states_name_unique",
+          "columns": [
+            "name"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -1136,7 +1312,16 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "user_company_idx": {
+          "name": "user_company_idx",
+          "columns": [
+            "user_id",
+            "company_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "user_companies_user_id_users_id_fk": {
           "name": "user_companies_user_id_users_id_fk",
@@ -1208,9 +1393,32 @@
           "notNull": false,
           "autoincrement": false
         },
-        "role_id": {
-          "name": "role_id",
+        "role": {
+          "name": "role",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'user'"
+        },
+        "banned": {
+          "name": "banned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "ban_reason": {
+          "name": "ban_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ban_expires": {
+          "name": "ban_expires",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1239,21 +1447,7 @@
           "isUnique": true
         }
       },
-      "foreignKeys": {
-        "users_role_id_roles_id_fk": {
-          "name": "users_role_id_roles_id_fk",
-          "tableFrom": "users",
-          "tableTo": "roles",
-          "columnsFrom": [
-            "role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -1306,86 +1500,6 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "voting_centers": {
-      "name": "voting_centers",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "parish_id": {
-          "name": "parish_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "latitude": {
-          "name": "latitude",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "longitude": {
-          "name": "longitude",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "voting_centers_parish_id_parishes_id_fk": {
-          "name": "voting_centers_parish_id_parishes_id_fk",
-          "tableFrom": "voting_centers",
-          "tableTo": "parishes",
-          "columnsFrom": [
-            "parish_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
