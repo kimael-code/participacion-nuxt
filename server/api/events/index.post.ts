@@ -26,23 +26,19 @@ export default defineEventHandler(async (event) => {
     createEventSchema.parse(b),
   );
 
-  try {
-    const [newEvent] = await db
-      .insert(events)
-      .values({
-        id: crypto.randomUUID(),
-        name: body.name,
-        date: body.date,
-        active: body.active,
-        description: body.description,
-        companyId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+  const [newEvent] = await db
+    .insert(events)
+    .values({
+      id: crypto.randomUUID(),
+      name: body.name,
+      date: body.date,
+      active: body.active,
+      description: body.description,
+      companyId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
 
-    return newEvent;
-  } catch (error: any) {
-    throw error;
-  }
+  return newEvent;
 });

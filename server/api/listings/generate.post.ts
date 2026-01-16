@@ -97,18 +97,8 @@ export default defineEventHandler(async (event) => {
 
   // 5. Generate Filename: reporte_[TIPO]_[SEQ]_[HH_mm_dd_MM_yyyy].csv
   const now = new Date();
-  const timestamp = now
-    .toLocaleTimeString('es-VE', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
-    .replace(/[\/:]/g, '_')
-    .replace(/, /g, '_')
-    .replace(/\s/g, '_');
+  // Timestamp manual formatting logic below ignores this unused var
+
   // es-VE might give dd/MM/yyyy, HH:mm. Adjust manual formatting to be safe and match user specific format: HH_mm_dd_MM_yyyy
 
   const pad = (n: number) => n.toString().padStart(2, '0');

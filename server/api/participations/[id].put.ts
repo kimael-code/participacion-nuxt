@@ -25,31 +25,27 @@ export default defineEventHandler(async (event) => {
     updateParticipationSchema.parse(b),
   );
 
-  try {
-    // We update the record. We don't change employeeId or eventId as that would be a different record conceptually.
-    // If they need to change employee/event, they should delete and re-create.
+  // We update the record. We don't change employeeId or eventId as that would be a different record conceptually.
+  // If they need to change employee/event, they should delete and re-create.
 
-    const [updated] = await db
-      .update(participations)
-      .set({
-        ...body,
-        // If switching to participated=true, clear reason
-        nonParticipationReasonId:
-          body.participated === true ? null : body.nonParticipationReasonId,
-        updatedAt: new Date(),
-      })
-      .where(eq(participations.id, id))
-      .returning();
+  const [updated] = await db
+    .update(participations)
+    .set({
+      ...body,
+      // If switching to participated=true, clear reason
+      nonParticipationReasonId:
+        body.participated === true ? null : body.nonParticipationReasonId,
+      updatedAt: new Date(),
+    })
+    .where(eq(participations.id, id))
+    .returning();
 
-    if (!updated) {
-      throw createError({
-        statusCode: 404,
-        message: 'Participation not found',
-      });
-    }
-
-    return updated;
-  } catch (error: any) {
-    throw error;
+  if (!updated) {
+    throw createError({
+      statusCode: 404,
+      message: 'Participation not found',
+    });
   }
+
+  return updated;
 });

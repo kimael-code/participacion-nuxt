@@ -32,26 +32,22 @@ export default defineEventHandler(async (event) => {
     createLocationSchema.parse(b),
   );
 
-  try {
-    const [location] = await db
-      .insert(locations)
-      .values({
-        id: crypto.randomUUID(),
-        name: body.name,
-        type: body.type as any, // Cast to enum
-        address: body.address,
-        parishId: body.parishId,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        capacity: body.capacity,
-        notes: body.notes,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+  const [location] = await db
+    .insert(locations)
+    .values({
+      id: crypto.randomUUID(),
+      name: body.name,
+      type: body.type as any, // Cast to enum
+      address: body.address,
+      parishId: body.parishId,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      capacity: body.capacity,
+      notes: body.notes,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
 
-    return location;
-  } catch (error: any) {
-    throw error;
-  }
+  return location;
 });

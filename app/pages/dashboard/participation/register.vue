@@ -77,7 +77,8 @@ const handleRegister = async (employeeId: string, participated: boolean) => {
     // Refresh history
     fetchRecent(selectedEventId.value);
   } catch (error) {
-    // handled by composable
+    console.error(error);
+    toast.error('Error al registrar');
   }
 };
 
@@ -105,7 +106,8 @@ const submitNoParticipation = async () => {
     registrationNotes.value = '';
     fetchRecent(selectedEventId.value);
   } catch (error) {
-    // handled by composable
+    console.error(error);
+    toast.error('Error al registrar falta');
   }
 };
 </script>
@@ -233,6 +235,72 @@ const submitNoParticipation = async () => {
       </CardContent>
     </Card>
 
+    <!-- Recent History Section -->
+    <Card>
+      <CardHeader>
+        <CardTitle>Historial Reciente</CardTitle>
+        <CardDescription>
+          Últimos 10 registros para este evento.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div
+          v-if="recentParticipations.length === 0"
+          class="py-8 text-center text-muted-foreground"
+        >
+          No hay registros recientes.
+        </div>
+        <div v-else class="space-y-4">
+          <div
+            v-for="item in recentParticipations"
+            :key="item.id"
+            class="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                v-if="item.participated"
+                class="rounded-full bg-green-100 p-2 text-green-600 dark:bg-green-900/30"
+              >
+                <Icon name="lucide:check" class="h-4 w-4" />
+              </div>
+              <div
+                v-else
+                class="rounded-full bg-red-100 p-2 text-red-600 dark:bg-red-900/30"
+              >
+                <Icon name="lucide:x" class="h-4 w-4" />
+              </div>
+
+              <div class="flex flex-col">
+                <span class="font-medium"
+                  >{{ item.employee.firstName }}
+                  {{ item.employee.lastName }}</span
+                >
+                <span
+                  class="flex items-center gap-1 text-xs text-muted-foreground"
+                >
+                  {{ new Date(item.registeredAt).toLocaleTimeString() }}
+                  <span v-if="!item.participated && item.reason">
+                    • {{ item.reason.name }}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              @click="deleteParticipation(item.id, selectedEventId)"
+            >
+              <Icon
+                name="lucide:trash-2"
+                class="h-4 w-4 text-muted-foreground hover:text-destructive"
+              />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
     <!-- No Participation Modal -->
     <Dialog :open="showReasonModal" @update:open="showReasonModal = $event">
       <DialogContent>
@@ -261,8 +329,8 @@ const submitNoParticipation = async () => {
           <div class="grid gap-2">
             <Label for="notes">Notas (Opcional)</Label>
             <Textarea
-              v-model="registrationNotes"
               id="notes"
+              v-model="registrationNotes"
               placeholder="Información adicional..."
             />
           </div>

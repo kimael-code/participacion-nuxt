@@ -9,12 +9,12 @@ import {
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
+// Components
+import CompanyDialog from '~/components/companies/CompanyDialog.vue';
+
 definePageMeta({
   layout: 'dashboard',
 });
-
-// Components
-import CompanyDialog from '~/components/companies/CompanyDialog.vue';
 
 interface Company {
   id: string;
@@ -66,6 +66,7 @@ const handleDelete = async (id: string) => {
     refresh();
     // Also refresh context if needed ideally
   } catch (error) {
+    console.error(error);
     toast.error('Error al eliminar empresa');
   }
 };

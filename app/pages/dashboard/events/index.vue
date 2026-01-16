@@ -7,7 +7,6 @@ import {
   Trash2,
   Calendar,
   CheckCircle2,
-  XCircle,
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
@@ -63,6 +62,7 @@ const handleDelete = async (id: string) => {
     toast.success('Evento eliminado');
     refresh();
   } catch (error) {
+    console.error(error);
     toast.error('Error al eliminar evento');
   }
 };
@@ -76,6 +76,7 @@ const handleActivate = async (event: Event) => {
     toast.success(`Evento ${event.name} activado`);
     refresh();
   } catch (error: any) {
+    console.error(error);
     toast.error('Error al activar evento');
   }
 };

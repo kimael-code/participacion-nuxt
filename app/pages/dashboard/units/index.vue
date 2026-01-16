@@ -60,6 +60,7 @@ const handleDelete = async (id: string) => {
     toast.success('Unidad eliminada');
     refresh();
   } catch (error) {
+    console.error(error);
     toast.error('Error al eliminar unidad');
   }
 };

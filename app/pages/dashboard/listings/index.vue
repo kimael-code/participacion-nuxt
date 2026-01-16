@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-  FileText,
-  Download,
-  History,
-  Users,
-  UserX,
-  Loader2,
-} from 'lucide-vue-next';
+import { FileText, History, Users, UserX, Loader2 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
 definePageMeta({
@@ -61,7 +54,7 @@ const {
 } = useFetch<ListingHistory[]>('/api/listings/history', {
   query: computed(() => ({ eventId: selectedEventId.value })),
   watch: [selectedEventId],
-  enabled: computed(() => !!selectedEventId.value),
+  // enabled property removed as it is not supported
 });
 
 // 3. Generate Report Action
@@ -84,30 +77,7 @@ const generateReport = async (type: 'participation' | 'non_participation') => {
     const a = document.createElement('a');
     a.href = url;
 
-    // Try to get filename from headers? Or construct it manually?
-    // The API sends Content-Disposition, but Fetch/Blob handling can be tricky to extract it.
-    // We can replicate the naming logic or let the browser handle it if possible.
-    // Usually, client doesn't see headers with simple $fetch blob.
-    // Let's reconstruct or use a generic name if header access is hard,
-    // BUT the users wants specific name.
-    // Actually, 'download' attribute sets the name. If empty, browser uses header if present?
-    // Chrome respects header if 'download' attr is NOT set? No, usually download attr overrides.
-    // Let's rely on the server validation for now, but we need to set a filename here for UX.
-    // Or we can parse the Content-Disposition if we use useFetch with { onResponse }.
-
-    // Simpler: Just rely on the backend naming logic?
-    // We need to set a.download.
-    // Let's use a generic name as fallback, but ideally we match the backend.
-
-    // Hack: We know the format.
-    // But sequence number is calculated on server.
-    // Ideally we grab it from response headers.
-
-    // Let's refine fetch.
-
-    a.download = `reporte_generado.csv`; // Fallback, the browser might rename it if header exists?
-    // Actually, if I don't set a.download, does it use the header?
-    // Yes, usually.
+    a.download = `reporte_generado.csv`; // Fallback name
 
     document.body.appendChild(a);
     a.click();
@@ -133,7 +103,7 @@ const getTypeLabel = (type: string) =>
 <template>
   <div class="flex flex-col gap-6 p-6">
     <div class="flex flex-col gap-1">
-      <h1 class="text-3xl font-bold tracking-tight">Reportes CSV Extrernos</h1>
+      <h1 class="text-3xl font-bold tracking-tight">Reportes CSV Externos</h1>
       <p class="text-muted-foreground">
         Generación de listados de cédulas para sistemas externos.
       </p>
@@ -172,8 +142,8 @@ const getTypeLabel = (type: string) =>
           <Button
             variant="outline"
             class="h-20 justify-start px-4"
-            @click="generateReport('participation')"
             :disabled="isGenerating || !selectedEventId"
+            @click="generateReport('participation')"
           >
             <Users class="mr-4 h-6 w-6 text-green-600" />
             <div class="flex flex-col items-start gap-1">
@@ -187,8 +157,8 @@ const getTypeLabel = (type: string) =>
           <Button
             variant="outline"
             class="h-20 justify-start px-4"
-            @click="generateReport('non_participation')"
             :disabled="isGenerating || !selectedEventId"
+            @click="generateReport('non_participation')"
           >
             <UserX class="mr-4 h-6 w-6 text-red-600" />
             <div class="flex flex-col items-start gap-1">
@@ -214,7 +184,7 @@ const getTypeLabel = (type: string) =>
             <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
           <div
-            v-else-if="!history || history.length === 0"
+            v-else-if="!history || (history?.length || 0) === 0"
             class="p-4 text-center text-muted-foreground"
           >
             No hay reportes generados para este evento.
