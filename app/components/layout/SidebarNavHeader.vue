@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ChevronsUpDown, Plus } from 'lucide-vue-next';
+import { useCompanyStore } from '~/stores/company';
 
-const { selectedCompany, userCompanies, switchCompany, isLoading, init } =
-  useCompanyContext();
+const store = useCompanyStore();
+const { selectedCompany, userCompanies, isLoading } = storeToRefs(store);
+const { switchCompany, init } = store;
 
 // Cargar empresas al montar
 onMounted(async () => {

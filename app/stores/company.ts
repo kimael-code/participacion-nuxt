@@ -1,11 +1,16 @@
-export const useCompanyContext = () => {
+export const useCompanyStore = defineStore('company', () => {
   // Global state
-  const selectedCompanyId = useState<string | null>(
-    'selectedCompanyId',
-    () => null,
-  );
-  const userCompanies = useState<any[]>('userCompanies', () => []);
-  const isLoading = useState<boolean>('companyContextLoading', () => false);
+  const selectedCompanyId = ref<string | null>(null);
+  const userCompanies = ref<any[]>([]);
+  const isLoading = ref(false);
+
+  // Initialize from cookie immediately
+  if (import.meta.client || import.meta.server) {
+    const cookie = useCookie('selectedCompanyId');
+    if (cookie.value) {
+      selectedCompanyId.value = cookie.value;
+    }
+  }
 
   // Helper to find full company object
   const selectedCompany = computed(
@@ -17,19 +22,21 @@ export const useCompanyContext = () => {
   const fetchUserCompanies = async () => {
     isLoading.value = true;
     try {
-      const { data } = await useFetch('/api/companies');
-      if (data.value) {
-        userCompanies.value = data.value;
+      // Use $fetch to avoid "Component already mounted" warning
+      const data = await $fetch('/api/companies', {
+        headers: useRequestHeaders(['cookie']),
+      });
+
+      if (data) {
+        userCompanies.value = data;
 
         // Auto-select first company if none selected and companies exist
         if (!selectedCompanyId.value && userCompanies.value.length > 0) {
-          // Try to recover from cookie first?
-          // For now, auto-select first
           await switchCompany(userCompanies.value[0].id);
         }
       }
-    } catch (error) {
-      console.error('Error fetching companies:', error);
+    } catch (e) {
+      console.error('Unexpected error fetching companies:', e);
     } finally {
       isLoading.value = false;
     }
@@ -52,10 +59,12 @@ export const useCompanyContext = () => {
 
   // Initialize from cookie on client side if needed
   const init = async () => {
+    // Sync cookie just in case
     const companyCookie = useCookie('selectedCompanyId');
-    if (companyCookie.value) {
+    if (companyCookie.value && !selectedCompanyId.value) {
       selectedCompanyId.value = companyCookie.value;
     }
+
     if (userCompanies.value.length === 0) {
       await fetchUserCompanies();
     }
@@ -70,4 +79,4 @@ export const useCompanyContext = () => {
     switchCompany,
     init,
   };
-};
+});

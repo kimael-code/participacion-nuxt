@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Building2, ChevronsUpDown } from 'lucide-vue-next';
+import { useCompanyStore } from '~/stores/company';
 
-const { selectedCompany, userCompanies, switchCompany, isLoading, init } =
-  useCompanyContext();
+const store = useCompanyStore();
+const { selectedCompany, userCompanies, isLoading } = storeToRefs(store);
+const { switchCompany, init } = store;
 
 const isOpen = ref(false);
 
@@ -12,7 +14,9 @@ const handleSelect = async (companyId: string) => {
 };
 
 onMounted(async () => {
+  console.log('CompanySwitcher mounted with Pinia. Calling init...');
   await init();
+  console.log('Init completed. Companies:', userCompanies.value);
 });
 </script>
 
