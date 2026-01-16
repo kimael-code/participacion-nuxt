@@ -2,6 +2,7 @@ export interface Event {
   id: string;
   name: string;
   description: string | null;
+  type: 'voting' | 'medical' | 'training' | 'other';
   eventDate: string;
   companyId: string;
   isActive: boolean;

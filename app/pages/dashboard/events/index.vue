@@ -7,11 +7,13 @@ import {
   Trash2,
   Calendar,
   CheckCircle2,
+  XCircle,
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
 // Components
 import EventDialog from '~/components/events/EventDialog.vue';
+import { useCompanyStore } from '~/stores/company';
 
 definePageMeta({
   layout: 'dashboard',
@@ -26,7 +28,8 @@ interface Event {
   companyId: string;
 }
 
-const { selectedCompany } = useCompanyContext();
+const store = useCompanyStore();
+const { selectedCompany } = storeToRefs(store);
 const searchQuery = ref('');
 const showDialog = ref(false);
 const editingEvent = ref<Event | null>(null);
@@ -37,6 +40,7 @@ const {
   pending,
   refresh,
 } = await useFetch<Event[]>('/api/events', {
+  key: `events-${selectedCompany.value?.id}`,
   watch: [() => selectedCompany.value?.id],
 });
 
@@ -78,6 +82,20 @@ const handleActivate = async (event: Event) => {
   } catch (error: any) {
     console.error(error);
     toast.error('Error al activar evento');
+  }
+};
+
+const handleDeactivate = async (event: Event) => {
+  try {
+    await $fetch('/api/events/deactivate', {
+      method: 'POST',
+      body: { eventId: event.id },
+    });
+    toast.success(`Evento ${event.name} desactivado`);
+    refresh();
+  } catch (error: any) {
+    console.error(error);
+    toast.error('Error al desactivar evento');
   }
 };
 
@@ -180,8 +198,8 @@ const handleSaved = () => {
               <TableCell>
                 <Badge
                   v-if="event.active"
-                  variant="success"
-                  class="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400"
+                  variant="outline"
+                  class="border-green-200 bg-green-100 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
                 >
                   Activo
                 </Badge>
@@ -201,6 +219,10 @@ const handleSaved = () => {
                     >
                       <CheckCircle2 class="mr-2 h-4 w-4 text-green-600" />
                       Activar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-else @click="handleDeactivate(event)">
+                      <XCircle class="mr-2 h-4 w-4 text-red-600" />
+                      Desactivar
                     </DropdownMenuItem>
                     <DropdownMenuItem @click="handleEdit(event)">
                       <Pencil class="mr-2 h-4 w-4" /> Editar
