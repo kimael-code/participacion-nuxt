@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { useForm } from 'vee-validate';
+import { useForm, Field } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { toast } from 'vue-sonner';
+import { Label } from '~/components/ui/label';
+import { Input } from '~/components/ui/input';
+import { Textarea } from '~/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
 
 const props = defineProps<{
   open: boolean;
-  location?: any; // Using any for simplicity in mapping full object or id
+  location?: any;
 }>();
 
 const emit = defineEmits(['close', 'saved']);
@@ -42,22 +52,25 @@ const validationSchema = toTypedSchema(
     ]),
     address: z.string().min(5, 'Dirección requerida'),
     stateId: z.string().min(1, 'Estado requerido'),
-    municipalityId: z.string().min(1, 'Municipio requerido'), // Helper for UX, strictly only parishId is stored
+    municipalityId: z.string().min(1, 'Municipio requerido'),
     parishId: z.string().min(1, 'Parroquia requerida'),
     capacity: z.number().optional().nullable(),
   }),
 );
 
-const {
-  handleSubmit,
-  isSubmitting,
-  setValues,
-  resetForm,
-  values,
-  setFieldValue,
-} = useForm({
-  validationSchema,
-});
+const { handleSubmit, isSubmitting, resetForm, values, setFieldValue } =
+  useForm({
+    validationSchema,
+    initialValues: {
+      name: '',
+      type: 'voting_center' as const,
+      address: '',
+      stateId: '',
+      municipalityId: '',
+      parishId: '',
+      capacity: null,
+    },
+  });
 
 // Fetch States on Mount
 const fetchStates = async () => {
@@ -86,11 +99,8 @@ const loadParishes = async (municipalityId: string) => {
 };
 
 // Watchers for cascading dropdowns
-// Note: We need careful handling to avoid infinite loops or clearing values during edit load
 const handleStateChange = async (val: string) => {
-  // Determine if this change is user-initiated or programmatic?
-  // VeeValidate reactive values work well.
-  setFieldValue('municipalityId', ''); // Reset child
+  setFieldValue('municipalityId', '');
   setFieldValue('parishId', '');
   await loadMunicipalities(val);
 };
@@ -109,11 +119,6 @@ watch(
   () => props.location,
   async (newVal) => {
     if (newVal) {
-      // For editing, we need to pre-load the cascading lists
-      // Assuming newVal contains nested geographic objects: state: {id}, municipality: {id}
-      // If the API returns flat structure or nested, update accordingly.
-      // Our list API returns nested objects.
-
       const stateId = newVal.state?.id;
       const municipalityId = newVal.municipality?.id;
       const parishId = newVal.parish?.id;
@@ -121,17 +126,29 @@ watch(
       if (stateId) await loadMunicipalities(stateId);
       if (municipalityId) await loadParishes(municipalityId);
 
-      setValues({
-        name: newVal.name,
-        type: newVal.type,
-        address: newVal.address,
-        stateId: stateId || '',
-        municipalityId: municipalityId || '',
-        parishId: parishId || '',
-        capacity: newVal.capacity,
+      resetForm({
+        values: {
+          name: newVal.name,
+          type: newVal.type,
+          address: newVal.address,
+          stateId: stateId || '',
+          municipalityId: municipalityId || '',
+          parishId: parishId || '',
+          capacity: newVal.capacity,
+        },
       });
     } else {
-      resetForm();
+      resetForm({
+        values: {
+          name: '',
+          type: 'voting_center' as const,
+          address: '',
+          stateId: '',
+          municipalityId: '',
+          parishId: '',
+          capacity: null,
+        },
+      });
     }
   },
   { immediate: true },
@@ -144,9 +161,6 @@ const onSubmit = handleSubmit(async (values) => {
       : '/api/locations';
 
     const method = isEditing.value ? 'PATCH' : 'POST';
-
-    // We only need parishId for the API, but `values` contains all.
-    // Zod schema validation passes.
 
     await $fetch(url, {
       method,
@@ -173,44 +187,45 @@ const onSubmit = handleSubmit(async (values) => {
         </DialogDescription>
       </DialogHeader>
 
-      <form @submit="onSubmit" class="grid gap-4 py-4">
+      <form class="grid gap-4 py-4" @submit="onSubmit">
         <!-- Geographic Section (Row 1) -->
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField v-slot="{ componentField }" name="stateId">
-            <FormItem>
-              <FormLabel>Estado</FormLabel>
+          <Field v-slot="{ componentField, errorMessage }" name="stateId">
+            <div class="grid gap-2">
+              <Label for="state">Estado</Label>
               <Select
                 v-bind="componentField"
                 @update:model-value="handleStateChange"
               >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione Estado" />
-                  </SelectTrigger>
-                </FormControl>
+                <SelectTrigger id="state">
+                  <SelectValue placeholder="Seleccione Estado" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem v-for="s in states" :key="s.id" :value="s.id">
                     {{ s.name }}
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+              <span v-if="errorMessage" class="text-xs text-destructive">
+                {{ errorMessage }}
+              </span>
+            </div>
+          </Field>
 
-          <FormField v-slot="{ componentField }" name="municipalityId">
-            <FormItem>
-              <FormLabel>Municipio</FormLabel>
+          <Field
+            v-slot="{ componentField, errorMessage }"
+            name="municipalityId"
+          >
+            <div class="grid gap-2">
+              <Label for="municipality">Municipio</Label>
               <Select
                 v-bind="componentField"
                 :disabled="!values.stateId"
                 @update:model-value="handleMunicipalityChange"
               >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione Municipio" />
-                  </SelectTrigger>
-                </FormControl>
+                <SelectTrigger id="municipality">
+                  <SelectValue placeholder="Seleccione Municipio" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem
                     v-for="m in municipalities"
@@ -221,55 +236,56 @@ const onSubmit = handleSubmit(async (values) => {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+              <span v-if="errorMessage" class="text-xs text-destructive">
+                {{ errorMessage }}
+              </span>
+            </div>
+          </Field>
         </div>
 
-        <FormField v-slot="{ componentField }" name="parishId">
-          <FormItem>
-            <FormLabel>Parroquia</FormLabel>
+        <Field v-slot="{ componentField, errorMessage }" name="parishId">
+          <div class="grid gap-2">
+            <Label for="parish">Parroquia</Label>
             <Select v-bind="componentField" :disabled="!values.municipalityId">
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccione Parroquia" />
-                </SelectTrigger>
-              </FormControl>
+              <SelectTrigger id="parish">
+                <SelectValue placeholder="Seleccione Parroquia" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="p in parishes" :key="p.id" :value="p.id">
                   {{ p.name }}
                 </SelectItem>
               </SelectContent>
             </Select>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
         <div class="my-2 border-t"></div>
 
-        <FormField v-slot="{ componentField }" name="name">
-          <FormItem>
-            <FormLabel>Nombre del Centro</FormLabel>
-            <FormControl>
-              <Input
-                v-bind="componentField"
-                placeholder="Eruela Bolivariana..."
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <Field v-slot="{ componentField, errorMessage }" name="name">
+          <div class="grid gap-2">
+            <Label for="name">Nombre del Centro</Label>
+            <Input
+              id="name"
+              v-bind="componentField"
+              placeholder="Escuela Bolivariana..."
+            />
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField v-slot="{ componentField }" name="type">
-            <FormItem>
-              <FormLabel>Tipo de Instalación</FormLabel>
+          <Field v-slot="{ componentField, errorMessage }" name="type">
+            <div class="grid gap-2">
+              <Label for="type">Tipo de Instalación</Label>
               <Select v-bind="componentField">
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione Tipo" />
-                  </SelectTrigger>
-                </FormControl>
+                <SelectTrigger id="type">
+                  <SelectValue placeholder="Seleccione Tipo" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem
                     v-for="t in locationTypes"
@@ -280,33 +296,41 @@ const onSubmit = handleSubmit(async (values) => {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+              <span v-if="errorMessage" class="text-xs text-destructive">
+                {{ errorMessage }}
+              </span>
+            </div>
+          </Field>
 
-          <FormField v-slot="{ componentField }" name="capacity">
-            <FormItem>
-              <FormLabel>Capacidad Estimada</FormLabel>
-              <FormControl>
-                <Input type="number" v-bind="componentField" placeholder="0" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+          <Field v-slot="{ componentField, errorMessage }" name="capacity">
+            <div class="grid gap-2">
+              <Label for="capacity">Capacidad Estimada</Label>
+              <Input
+                id="capacity"
+                type="number"
+                v-bind="componentField"
+                placeholder="0"
+              />
+              <span v-if="errorMessage" class="text-xs text-destructive">
+                {{ errorMessage }}
+              </span>
+            </div>
+          </Field>
         </div>
 
-        <FormField v-slot="{ componentField }" name="address">
-          <FormItem>
-            <FormLabel>Dirección Detallada</FormLabel>
-            <FormControl>
-              <Textarea
-                v-bind="componentField"
-                placeholder="Av. Principal..."
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <Field v-slot="{ componentField, errorMessage }" name="address">
+          <div class="grid gap-2">
+            <Label for="address">Dirección Detallada</Label>
+            <Textarea
+              id="address"
+              v-bind="componentField"
+              placeholder="Av. Principal..."
+            />
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="emit('close')">

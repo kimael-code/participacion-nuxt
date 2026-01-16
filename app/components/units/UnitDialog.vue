@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { useForm } from 'vee-validate';
+import { useForm, Field } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { toast } from 'vue-sonner';
+import { Label } from '~/components/ui/label';
+import { Input } from '~/components/ui/input';
+import { Textarea } from '~/components/ui/textarea';
 
 const props = defineProps<{
   open: boolean;
@@ -19,20 +22,31 @@ const validationSchema = toTypedSchema(
   }),
 );
 
-const { handleSubmit, isSubmitting, setValues, resetForm } = useForm({
+const { handleSubmit, isSubmitting, resetForm } = useForm({
   validationSchema,
+  initialValues: {
+    name: '',
+    description: '',
+  },
 });
 
 watch(
   () => props.unit,
   (newVal) => {
     if (newVal) {
-      setValues({
-        name: newVal.name,
-        description: newVal.description || '',
+      resetForm({
+        values: {
+          name: newVal.name,
+          description: newVal.description || '',
+        },
       });
     } else {
-      resetForm();
+      resetForm({
+        values: {
+          name: '',
+          description: '',
+        },
+      });
     }
   },
   { immediate: true },
@@ -70,28 +84,33 @@ const onSubmit = handleSubmit(async (values) => {
       </DialogHeader>
 
       <form @submit="onSubmit" class="grid gap-4 py-4">
-        <FormField v-slot="{ componentField }" name="name">
-          <FormItem>
-            <FormLabel>Nombre</FormLabel>
-            <FormControl>
-              <Input v-bind="componentField" placeholder="Recursos Humanos" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <Field v-slot="{ componentField, errorMessage }" name="name">
+          <div class="grid gap-2">
+            <Label for="name">Nombre</Label>
+            <Input
+              id="name"
+              v-bind="componentField"
+              placeholder="Recursos Humanos"
+            />
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
-        <FormField v-slot="{ componentField }" name="description">
-          <FormItem>
-            <FormLabel>Descripción</FormLabel>
-            <FormControl>
-              <Textarea
-                v-bind="componentField"
-                placeholder="Descripción opcional..."
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <Field v-slot="{ componentField, errorMessage }" name="description">
+          <div class="grid gap-2">
+            <Label for="description">Descripción</Label>
+            <Textarea
+              id="description"
+              v-bind="componentField"
+              placeholder="Descripción opcional..."
+            />
+            <span v-if="errorMessage" class="text-xs text-destructive">
+              {{ errorMessage }}
+            </span>
+          </div>
+        </Field>
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="emit('close')">
