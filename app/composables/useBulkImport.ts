@@ -1,8 +1,11 @@
 import Papa from 'papaparse';
 import { toast } from 'vue-sonner';
 
+import { useCompanyStore } from '~/stores/company';
+
 export const useBulkImport = () => {
-  const { selectedCompany } = useCompanyContext();
+  const store = useCompanyStore();
+  const { selectedCompany } = storeToRefs(store);
   const isLoading = ref(false);
   const csvData = ref<string | null>(null);
   const preview = ref<{

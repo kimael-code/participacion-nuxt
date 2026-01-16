@@ -11,6 +11,7 @@ import { toast } from 'vue-sonner';
 
 // Components
 import UnitDialog from '~/components/units/UnitDialog.vue';
+import { useCompanyStore } from '~/stores/company';
 
 definePageMeta({
   layout: 'dashboard',
@@ -23,7 +24,8 @@ interface AdministrativeUnit {
   createdAt: string;
 }
 
-const { selectedCompany } = useCompanyContext();
+const store = useCompanyStore();
+const { selectedCompany } = storeToRefs(store);
 const searchQuery = ref('');
 const showDialog = ref(false);
 const editingUnit = ref<AdministrativeUnit | null>(null);

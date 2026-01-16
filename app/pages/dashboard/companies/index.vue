@@ -76,7 +76,9 @@ const handleSaved = () => {
   editingCompany.value = null;
   refresh();
   // Also update global context
-  const { fetchUserCompanies } = useCompanyContext();
+  // Also update global context
+  const store = useCompanyStore();
+  const { fetchUserCompanies } = store;
   fetchUserCompanies();
 };
 </script>
