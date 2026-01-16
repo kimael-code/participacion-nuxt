@@ -7,10 +7,8 @@ import { db } from '~~/server/utils/db';
 
 const updateEventSchema = z.object({
   name: z.string().min(3).optional(),
-  date: z
-    .string()
-    .transform((str) => new Date(str))
-    .optional(),
+  date: z.coerce.date().optional(),
+  type: z.enum(['voting', 'medical', 'training', 'other']).optional(),
   active: z.boolean().optional(),
   description: z.string().optional(),
 });
@@ -21,7 +19,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' });
   }
 
-  const companyId = await getUserCompanyId(session.user.id);
+  const companyId = await getUserCompanyId(session.user.id, event);
   if (!companyId) {
     throw createError({ statusCode: 403, message: 'Unauthorized' });
   }
@@ -35,18 +33,41 @@ export default defineEventHandler(async (event) => {
     updateEventSchema.parse(b),
   );
 
-  const [updated] = await db
-    .update(events)
-    .set({
-      ...body,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(events.id, id), eq(events.companyId, companyId)))
-    .returning();
+  const updateData: any = {
+    updatedAt: new Date(),
+  };
+
+  if (body.name !== undefined) updateData.name = body.name;
+  if (body.date !== undefined) updateData.eventDate = body.date;
+  if (body.type !== undefined) updateData.type = body.type;
+  if (body.active !== undefined) updateData.isActive = body.active;
+  if (body.description !== undefined) updateData.description = body.description;
+
+  const updated = await db.transaction(async (tx) => {
+    if (updateData.isActive === true) {
+      // Deactivate all other events for this company
+      await tx
+        .update(events)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(events.companyId, companyId));
+    }
+
+    const [eventRecord] = await tx
+      .update(events)
+      .set(updateData)
+      .where(and(eq(events.id, id), eq(events.companyId, companyId)))
+      .returning();
+
+    return eventRecord;
+  });
 
   if (!updated) {
     throw createError({ statusCode: 404, message: 'Event not found' });
   }
 
-  return updated;
+  return {
+    ...updated,
+    date: updated.eventDate,
+    active: updated.isActive,
+  };
 });

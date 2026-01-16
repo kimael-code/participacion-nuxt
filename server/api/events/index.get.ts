@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { auth } from '~~/server/auth';
-import { events, userCompanies } from '~~/server/database/schema';
+import { events } from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
@@ -13,19 +13,21 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Get the user's primary company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
+  const { getUserCompanyId } = await import('~~/server/utils/auth'); // Need to import or it might be global if configured
+  const companyId = await getUserCompanyId(session.user.id, event);
 
-  if (!userCompany) {
+  if (!companyId) {
     return [];
   }
 
   const allEvents = await db.query.events.findMany({
-    where: eq(events.companyId, userCompany.companyId),
+    where: eq(events.companyId, companyId),
     orderBy: (records, { desc }) => [desc(records.eventDate)],
   });
 
-  return allEvents;
+  return allEvents.map((e) => ({
+    ...e,
+    date: e.eventDate,
+    active: e.isActive,
+  }));
 });

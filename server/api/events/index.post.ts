@@ -6,7 +6,8 @@ import { db } from '~~/server/utils/db';
 
 const createEventSchema = z.object({
   name: z.string().min(3),
-  date: z.string().transform((str) => new Date(str)),
+  date: z.coerce.date(),
+  type: z.enum(['voting', 'medical', 'training', 'other']).default('voting'),
   active: z.boolean().default(false),
   description: z.string().optional(),
 });
@@ -17,7 +18,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' });
   }
 
-  const companyId = await getUserCompanyId(session.user.id);
+  const companyId = await getUserCompanyId(session.user.id, event);
   if (!companyId) {
     throw createError({ statusCode: 403, message: 'Unauthorized' });
   }
@@ -26,13 +27,17 @@ export default defineEventHandler(async (event) => {
     createEventSchema.parse(b),
   );
 
+  console.log('Creating event with body:', body);
+
   const [newEvent] = await db
     .insert(events)
     .values({
       id: crypto.randomUUID(),
       name: body.name,
-      date: body.date,
-      active: body.active,
+      // Ensure date is a valid Date object
+      eventDate: new Date(body.date),
+      type: body.type,
+      isActive: body.active,
       description: body.description,
       companyId,
       createdAt: new Date(),
@@ -40,5 +45,9 @@ export default defineEventHandler(async (event) => {
     })
     .returning();
 
-  return newEvent;
+  return {
+    ...newEvent,
+    date: newEvent.eventDate,
+    active: newEvent.isActive,
+  };
 });

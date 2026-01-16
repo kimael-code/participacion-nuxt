@@ -1,13 +1,13 @@
 import { and, count, eq, notInArray } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~/server/auth';
+import { auth } from '~~/server/auth';
 import {
   csvListings,
   employees,
   events,
   participations,
-} from '~/server/database/schema';
-import { db } from '~/server/utils/db';
+} from '~~/server/database/schema';
+import { db } from '~~/server/utils/db';
 
 const generateSchema = z.object({
   eventId: z.string(),

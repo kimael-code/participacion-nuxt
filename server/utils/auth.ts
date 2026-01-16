@@ -1,17 +1,36 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import type { H3Event } from 'h3';
 import { userCompanies } from '~~/server/database/schema';
 import { db } from './db';
 
 /**
  * Gets the company ID for a user.
- * For Demo/Dev purposes, if no explicit association is found,
- * it falls back to the first available company in the database.
+ * Prioritizes the 'selected-company-id' cookie if provided.
+ * Verifies that the user actually belongs to that company.
  */
-export async function getUserCompanyId(userId: string): Promise<string | null> {
-  // Find explicit association
-  const association = await db.query.userCompanies.findFirst({
+export async function getUserCompanyId(
+  userId: string,
+  event?: H3Event,
+): Promise<string | null> {
+  const selectedCompanyId = event
+    ? getCookie(event, 'selected-company-id')
+    : null;
+
+  if (selectedCompanyId) {
+    // Verify user belongs to this company
+    const association = await db.query.userCompanies.findFirst({
+      where: and(
+        eq(userCompanies.userId, userId),
+        eq(userCompanies.companyId, selectedCompanyId),
+      ),
+    });
+    if (association) return association.companyId;
+  }
+
+  // Fallback to first explicit association
+  const fallback = await db.query.userCompanies.findFirst({
     where: eq(userCompanies.userId, userId),
   });
 
-  return association?.companyId || null;
+  return fallback?.companyId || null;
 }
