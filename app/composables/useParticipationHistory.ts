@@ -10,6 +10,10 @@ export interface RecentParticipation {
     lastName: string;
     cedula: string;
   };
+  event: {
+    id: string;
+    name: string;
+  };
   reason?: {
     id: string;
     name: string;
@@ -32,8 +36,25 @@ export const useParticipationHistory = () => {
         },
       );
       recentParticipations.value = data;
-    } catch (error) {
-      console.error('Error fetching history:', error);
+    } catch {
+      console.error('Error fetching history:');
+    } finally {
+      loadingHistory.value = false;
+    }
+  };
+
+  const fetchRecentAll = async () => {
+    loadingHistory.value = true;
+    try {
+      const data = await $fetch<RecentParticipation[]>(
+        '/api/participations/recent-all',
+        {
+          query: { limit: 10 },
+        },
+      );
+      recentParticipations.value = data;
+    } catch {
+      console.error('Error fetching history:');
     } finally {
       loadingHistory.value = false;
     }
@@ -48,6 +69,7 @@ export const useParticipationHistory = () => {
       // Refresh list
       await fetchRecent(eventId);
     } catch (error) {
+      console.error('Error deleting participation:', error);
       toast.error('Error al eliminar registro');
     }
   };
@@ -56,6 +78,7 @@ export const useParticipationHistory = () => {
     recentParticipations,
     loadingHistory,
     fetchRecent,
+    fetchRecentAll,
     deleteParticipation,
   };
 };

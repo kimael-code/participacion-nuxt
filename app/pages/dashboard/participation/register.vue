@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { useEmployeeSearch } from '~/composables/useEmployeeSearch';
 import { useParticipationRegistration } from '~/composables/useParticipationRegistration';
 import { useParticipationHistory } from '~/composables/useParticipationHistory';
@@ -30,7 +30,7 @@ watch(
   events,
   (newEvents) => {
     if (newEvents && newEvents.length > 0 && !selectedEventId.value) {
-      selectedEventId.value = newEvents[0].id;
+      selectedEventId.value = newEvents[0]?.id ?? '';
     }
   },
   { immediate: true },
@@ -48,12 +48,31 @@ const activeEmployeeId = ref<string | null>(null);
 const { searchQuery, isSearching, results } = useEmployeeSearch();
 
 const { registerParticipation, isSubmitting } = useParticipationRegistration();
-const { recentParticipations, fetchRecent, deleteParticipation } =
+const { recentParticipations, fetchRecentAll, deleteParticipation } =
   useParticipationHistory();
 
-// Refresh history when even changes
-watch(selectedEventId, (newId) => {
-  if (newId) fetchRecent(newId);
+// Computed: should show event selector?
+const shouldShowEventSelector = computed(() => {
+  return events.value && events.value.length > 1;
+});
+
+// Computed: selected event details
+const selectedEvent = computed(() => {
+  return events.value?.find((e) => e.id === selectedEventId.value);
+});
+
+// Helper: format date as DD/MM/YYYY
+const formatEventDate = (date: string | Date) => {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Load history from all events on mount
+onMounted(() => {
+  fetchRecentAll();
 });
 
 const handleRegister = async (employeeId: string, participated: boolean) => {
@@ -75,7 +94,7 @@ const handleRegister = async (employeeId: string, participated: boolean) => {
       participated: true,
     });
     // Refresh history
-    fetchRecent(selectedEventId.value);
+    fetchRecentAll();
   } catch (error) {
     console.error(error);
     toast.error('Error al registrar');
@@ -104,7 +123,7 @@ const submitNoParticipation = async () => {
     activeEmployeeId.value = null;
     selectedReasonId.value = '';
     registrationNotes.value = '';
-    fetchRecent(selectedEventId.value);
+    fetchRecentAll();
   } catch (error) {
     console.error(error);
     toast.error('Error al registrar falta');
@@ -127,13 +146,18 @@ const submitNoParticipation = async () => {
     <Card>
       <CardHeader>
         <CardTitle>Configuración del Evento</CardTitle>
-        <CardDescription
-          >Seleccione el evento para el cual registrará
-          participación.</CardDescription
-        >
+        <CardDescription>
+          <template v-if="shouldShowEventSelector">
+            Seleccione el evento para el cual registrará participación.
+          </template>
+          <template v-else>
+            Evento activo seleccionado automáticamente.
+          </template>
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div class="flex items-center gap-4">
+        <!-- Multiple events: show selector -->
+        <div v-if="shouldShowEventSelector" class="flex items-center gap-4">
           <div class="grid w-full max-w-sm items-center gap-1.5">
             <Label for="event">Evento Activo</Label>
             <Select v-model="selectedEventId" :disabled="loadingEvents">
@@ -146,12 +170,41 @@ const submitNoParticipation = async () => {
                   :key="event.id"
                   :value="event.id"
                 >
-                  {{ event.name }} -
-                  {{ new Date(event.eventDate).toLocaleDateString() }}
+                  {{ event.name }} - {{ formatEventDate(event.eventDate) }}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <!-- Single event: show indicator -->
+        <div
+          v-else-if="selectedEvent"
+          class="flex items-center gap-3 rounded-lg border bg-accent/50 p-4"
+        >
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10"
+          >
+            <Icon name="lucide:calendar" class="h-5 w-5 text-primary" />
+          </div>
+          <div class="flex flex-col">
+            <span class="font-semibold">{{ selectedEvent.name }}</span>
+            <span class="text-sm text-muted-foreground">
+              {{ formatEventDate(selectedEvent.eventDate) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Loading state -->
+        <div v-else-if="loadingEvents" class="py-4 text-center">
+          <Icon name="lucide:loader-2" class="h-6 w-6 animate-spin" />
+        </div>
+
+        <!-- No events -->
+        <div v-else class="rounded-lg border border-dashed p-4 text-center">
+          <p class="text-sm text-muted-foreground">
+            No hay eventos activos en este momento.
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -240,7 +293,7 @@ const submitNoParticipation = async () => {
       <CardHeader>
         <CardTitle>Historial Reciente</CardTitle>
         <CardDescription>
-          Últimos 10 registros para este evento.
+          Últimos 10 registros de todos los eventos de la empresa.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -271,14 +324,15 @@ const submitNoParticipation = async () => {
               </div>
 
               <div class="flex flex-col">
-                <span class="font-medium"
-                  >{{ item.employee.firstName }}
-                  {{ item.employee.lastName }}</span
-                >
+                <span class="font-medium">
+                  {{ item.employee.firstName }}
+                  {{ item.employee.lastName }}
+                </span>
                 <span
                   class="flex items-center gap-1 text-xs text-muted-foreground"
                 >
                   {{ new Date(item.registeredAt).toLocaleTimeString() }}
+                  <span v-if="item.event"> • {{ item.event.name }} </span>
                   <span v-if="!item.participated && item.reason">
                     • {{ item.reason.name }}
                   </span>
@@ -289,7 +343,7 @@ const submitNoParticipation = async () => {
             <Button
               variant="ghost"
               size="icon"
-              @click="deleteParticipation(item.id, selectedEventId)"
+              @click="deleteParticipation(item.id, item.event.id)"
             >
               <Icon
                 name="lucide:trash-2"
