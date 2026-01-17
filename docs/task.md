@@ -61,16 +61,16 @@
 
 ## Fase 3: Backend/API
 
-- [ ] Implementar API routes para catálogos geográficos (READ-ONLY)
-  - [ ] `GET /api/geographic/states`
-  - [ ] `GET /api/geographic/municipalities?stateId=`
-  - [ ] `GET /api/geographic/parishes?municipalityId=`
-- [ ] Implementar API routes para empresas (CRUD)
-  - [ ] `GET /api/companies` (empresas del usuario)
-  - [ ] `GET /api/companies/:id` (detalle)
-  - [ ] `POST /api/companies` (crear)
-  - [ ] `PUT /api/companies/:id` (actualizar)
-  - [ ] `DELETE /api/companies/:id` (eliminar)
+- [x] Implementar API routes para catálogos geográficos (READ-ONLY)
+  - [x] `GET /api/geographic/states`
+  - [x] `GET /api/geographic/municipalities?stateId=`
+  - [x] `GET /api/geographic/parishes?municipalityId=`
+- [x] Implementar API routes para empresas (CRUD)
+  - [x] `GET /api/companies` (empresas del usuario)
+  - [x] `GET /api/companies/:id` (detalle)
+  - [x] `POST /api/companies` (crear)
+  - [x] `PUT /api/companies/:id` (actualizar)
+  - [x] `DELETE /api/companies/:id` (eliminar)
 - [x] Implementar API routes para empleados
   - [x] `GET /api/employees` (filtrado por empresa activa)
   - [x] `GET /api/employees/catalogs` (catálogos para formularios)
@@ -78,24 +78,32 @@
   - [x] `POST /api/employees` (crear)
   - [x] `PATCH /api/employees/:id` (actualizar)
   - [x] `DELETE /api/employees/:id` (eliminar)
-  - [x] `POST /api/employees/batch` (importación CSV)
-- [ ] Implementar API routes para unidades administrativas (CRUD, por empresa)
-- [/] Implementar API routes para eventos (CRUD, por empresa)
+  - [x] `POST /api/bulk-import` (importación CSV)
+- [x] Implementar API routes para unidades administrativas (CRUD, por empresa)
+- [x] Implementar API routes para eventos (CRUD, por empresa)
   - [x] `GET /api/events` (listar)
   - [x] `POST /api/events` (crear)
-  - [ ] Completar CRUD
-- [ ] Implementar API routes para centros de votación (CRUD)
-  - [ ] Incluir JOINs para obtener ubicación completa (state, municipality, parish)
+  - [x] `PATCH /api/events/:id` (actualizar)
+  - [x] `DELETE /api/events/:id` (eliminar)
+  - [x] `POST /api/events/activate` (activar evento)
+  - [x] `POST /api/events/deactivate` (desactivar evento)
+  - [x] `GET /api/events/active` (obtener evento activo)
+- [x] Implementar API routes para centros de votación (CRUD)
+  - [x] Incluir JOINs para obtener ubicación completa (state, municipality, parish)
 - [x] Implementar API routes para participación
   - [x] `POST /api/participations` (registrar)
-  - [ ] `PUT /api/participations/:id` (actualizar)
+  - [x] `PUT /api/participations/:id` (actualizar)
+  - [x] `DELETE /api/participations/:id` (eliminar)
+  - [x] `GET /api/participations/reasons` (motivos)
+  - [x] `GET /api/participations/recent` (recientes)
   - [x] Estadísticas integradas en dashboard
 - [x] Implementar SSE endpoint para dashboard
   - [x] `GET /api/dashboard/stats` (Server-Sent Events)
-- [/] Implementar generación de listados CSV
-  - [/] `GET /api/reports` (parcial)
+- [x] Implementar generación de listados CSV
+  - [x] `POST /api/listings/generate` (generar listado)
+  - [x] `GET /api/listings/history` (historial)
 - [x] Implementar middleware de autenticación
-- [ ] Implementar middleware de verificación de acceso a empresa
+- [x] Implementar middleware de verificación de acceso a empresa
 - [x] Implementar validaciones con Zod
 
 ## Fase 4: Sistema de Autenticación
@@ -113,24 +121,29 @@
 
 ## Fase 5: Gestión de Datos Maestros
 
-- [ ] Implementar contexto de empresa
-  - [ ] Crear composable `useCompanyContext.ts`
-  - [ ] Crear componente `CompanySwitcher.vue` (sidebar)
-  - [ ] Integrar selector en layout principal
-- [ ] Página de gestión de empresas (`/companies`)
-  - [ ] Listado con tabla
-  - [ ] Formulario de creación/edición
-  - [ ] Upload de logo
-  - [ ] Validación RIF/NIT
+- [x] Implementar contexto de empresa
+  - [x] Crear composable `useCompanyContext.ts`
+  - [x] Crear componente `CompanySwitcher.vue` (sidebar)
+  - [x] Integrar selector en layout principal
+- [x] Página de gestión de empresas (`/dashboard/companies`)
+  - [x] Listado con tabla
+  - [x] Formulario de creación/edición (CompanyDialog.vue)
+  - [x] Upload de logo
+  - [x] Validación RIF/NIT
 - [x] Página de gestión de empleados (`/dashboard/employees`)
   - [x] Listado con tabla (filtrado por empresa activa)
   - [x] Búsqueda y filtros
   - [x] Formulario de creación/edición (EmployeeDialog.vue)
-  - [x] Importación masiva CSV (ImportEmployeesDialog.vue)
+  - [x] Importación masiva CSV (página dedicada /dashboard/bulk-import)
   - [x] Validación de cédulas
-- [ ] Página de gestión de unidades administrativas
-- [/] Página de gestión de eventos (parcial)
-- [ ] Página de gestión de centros de votación
+- [x] Página de gestión de unidades administrativas (`/dashboard/units`)
+  - [x] CRUD completo con UnitDialog.vue
+- [x] Página de gestión de eventos (`/dashboard/events`)
+  - [x] CRUD completo con EventDialog.vue
+  - [x] Activación/desactivación de eventos
+- [x] Página de gestión de centros de votación (`/dashboard/locations`)
+  - [x] CRUD completo con LocationDialog.vue
+  - [x] Integración con catálogos geográficos
 
 ## Fase 6: Sistema de Registro de Participación
 
@@ -166,32 +179,37 @@
 
 ## Fase 8: Sistema de Listados CSV
 
-- [ ] Crear página `/listings`
-- [ ] Implementar interfaz de generación
-  - [ ] Selector de evento
-  - [ ] Botón de generación
-  - [ ] Historial de listados
-- [ ] Implementar lógica de generación incremental
-  - [ ] Solo empleados nuevos desde último listado
-  - [ ] Formato CSV con cédulas
-- [ ] Crear utilidad `server/utils/csv.ts`
+- [x] Crear página `/dashboard/listings`
+- [x] Implementar interfaz de generación
+  - [x] Selector de evento
+  - [x] Botón de generación
+  - [x] Historial de listados
+- [/] Implementar lógica de generación incremental
+  - [/] Solo empleados nuevos desde último listado
+  - [/] Formato CSV con cédulas
+- [x] Crear API endpoints
+  - [x] `POST /api/listings/generate`
+  - [x] `GET /api/listings/history`
 - [ ] Implementar descarga automática
-- [ ] Registrar metadata de listados emitidos
+- [/] Registrar metadata de listados emitidos
 
 ## Fase 9: Sistema de Reportes PDF
 
-- [ ] Crear página `/reports`
-- [ ] Implementar interfaz de filtros
-  - [ ] Evento
-  - [ ] Unidad administrativa
-  - [ ] Listado emitido
-  - [ ] Estatus de participación
-- [ ] Crear composable `usePDFGenerator.ts`
-  - [ ] Integración con jsPDF
-  - [ ] Template de reporte
-  - [ ] Generación de tablas con autotable
+- [x] Crear página `/dashboard/reports`
+- [/] Implementar interfaz de filtros
+  - [x] Evento
+  - [/] Unidad administrativa
+  - [/] Listado emitido
+  - [/] Estatus de participación
+- [x] Crear composable `usePDFGenerator.ts`
+  - [x] Integración con jsPDF
+  - [/] Template de reporte
+  - [/] Generación de tablas con autotable
+- [x] Crear API endpoints
+  - [x] `GET /api/reports`
+  - [x] `GET /api/reports/export`
 - [ ] Implementar preview de datos
-- [ ] Implementar generación y descarga de PDF en cliente
+- [/] Implementar generación y descarga de PDF en cliente
 
 ## Fase 10: Mejoras de UX/UI
 
