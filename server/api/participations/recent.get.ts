@@ -1,6 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import {
   employees,
   nonParticipationReasons,
@@ -10,14 +9,11 @@ import { db } from '~~/server/utils/db';
 
 const querySchema = z.object({
   eventId: z.string(),
-  limit: z.coerce.number().default(10), // Default 10 recent items
+  limit: z.coerce.number().default(10),
 });
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth provided by middleware
 
   const query = await getValidatedQuery(event, (q) => querySchema.parse(q));
 
@@ -45,7 +41,7 @@ export default defineEventHandler(async (event) => {
       eq(participations.nonParticipationReasonId, nonParticipationReasons.id),
     )
     .where(eq(participations.eventId, query.eventId))
-    .orderBy(desc(participations.registeredAt)) // Most recent first
+    .orderBy(desc(participations.registeredAt))
     .limit(query.limit);
 
   return results;

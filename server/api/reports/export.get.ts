@@ -1,30 +1,17 @@
-import { eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
 import * as schema from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
-const { userCompanies, employees } = schema;
+const { employees } = schema;
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
 
   const query = getQuery(event);
   const eventId = query.eventId as string;
 
   if (!eventId) {
     throw createError({ statusCode: 400, message: 'Event ID is required' });
-  }
-
-  // Verify company access
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
-
-  if (!userCompany) {
-    throw createError({ statusCode: 403, message: 'Unauthorized' });
   }
 
   // Fetch participations for the event, filtered by user's company
@@ -39,7 +26,7 @@ export default defineEventHandler(async (event) => {
             .where(
               and(
                 eq(employees.id, participations.employeeId),
-                eq(employees.companyId, userCompany.companyId),
+                eq(employees.companyId, companyId),
               ),
             ),
         ),
@@ -54,7 +41,7 @@ export default defineEventHandler(async (event) => {
     },
   });
 
-  // Generate CSV manually for simplicity (no extra library needed for simple CSV)
+  // Generate CSV
   const headers = [
     'Cedula',
     'Nombre',

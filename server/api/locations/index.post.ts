@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import { locations } from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
@@ -23,10 +22,7 @@ const createLocationSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth provided by middleware
 
   const body = await readValidatedBody(event, (b) =>
     createLocationSchema.parse(b),
@@ -37,7 +33,7 @@ export default defineEventHandler(async (event) => {
     .values({
       id: crypto.randomUUID(),
       name: body.name,
-      type: body.type as any, // Cast to enum
+      type: body.type as any,
       address: body.address,
       parishId: body.parishId,
       latitude: body.latitude,

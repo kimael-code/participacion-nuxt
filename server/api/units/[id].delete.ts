@@ -1,26 +1,17 @@
 import { and, eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
 import { administrativeUnits } from '~~/server/database/schema';
-import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
-
-  const companyId = await getUserCompanyId(session.user.id);
-  if (!companyId) {
-    throw createError({ statusCode: 403, message: 'Unauthorized' });
-  }
-
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
   const id = getRouterParam(event, 'id');
+
   if (!id) {
     throw createError({ statusCode: 400, message: 'ID required' });
   }
 
-  const result = await db
+  const [deleted] = await db
     .delete(administrativeUnits)
     .where(
       and(
@@ -30,8 +21,11 @@ export default defineEventHandler(async (event) => {
     )
     .returning();
 
-  if (result.length === 0) {
-    throw createError({ statusCode: 404, message: 'Unit not found' });
+  if (!deleted) {
+    throw createError({
+      statusCode: 404,
+      message: 'Unit not found or access denied',
+    });
   }
 
   return { success: true };

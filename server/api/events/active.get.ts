@@ -1,34 +1,22 @@
 import { and, eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
-import { events, userCompanies } from '~~/server/database/schema';
+import { events } from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-
-  if (!session) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized',
-    });
-  }
-
-  // Get the user's primary company (for now, the first one found)
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
-
-  if (!userCompany) {
-    return [];
-  }
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
 
   const activeEvent = await db.query.events.findFirst({
-    where: and(
-      eq(events.companyId, userCompany.companyId),
-      eq(events.isActive, true),
-    ),
-    orderBy: (records, { desc }) => [desc(records.eventDate)],
+    where: and(eq(events.companyId, companyId), eq(events.isActive, true)),
   });
 
-  return activeEvent || null;
+  if (!activeEvent) {
+    return null;
+  }
+
+  return {
+    ...activeEvent,
+    date: activeEvent.eventDate,
+    active: activeEvent.isActive,
+  };
 });

@@ -1,6 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import { csvListings, users } from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
@@ -9,10 +8,7 @@ const querySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth provided by middleware
 
   const query = await getValidatedQuery(event, (q) => querySchema.parse(q));
 

@@ -1,5 +1,4 @@
 import { asc, eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
 import {
   locations,
   municipalities,
@@ -9,14 +8,8 @@ import {
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
-
-  // Locations are theoretically shared across the platform (master catalog),
-  // but if needed we could filter by usage. For now, returning full catalog.
-  // We join with geographic tables to provide full context.
+  // Auth provided by middleware (locations are shared catalog)
+  // No company filtering needed as locations are platform-wide
 
   const result = await db
     .select({

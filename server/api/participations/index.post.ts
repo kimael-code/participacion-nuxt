@@ -1,6 +1,5 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import { participations } from '../../database/schema';
 import { db } from '../../utils/db';
 
@@ -17,15 +16,12 @@ const participationSchema = z.object({
  * POST /api/participations
  */
 export default defineEventHandler(async (event) => {
-  // Get session
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth and user provided by middleware
+  const { user } = event.context.auth!;
 
   const body = await readBody(event);
   const validatedData = participationSchema.parse(body);
-  const userId = session.user.id;
+  const userId = user.id;
 
   // Check if participation already exists
   const existing = await db.query.participations.findFirst({

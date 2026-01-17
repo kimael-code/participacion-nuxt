@@ -1,7 +1,5 @@
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import { events } from '~~/server/database/schema';
-import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 const createEventSchema = z.object({
@@ -13,28 +11,18 @@ const createEventSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
-
-  const companyId = await getUserCompanyId(session.user.id, event);
-  if (!companyId) {
-    throw createError({ statusCode: 403, message: 'Unauthorized' });
-  }
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
 
   const body = await readValidatedBody(event, (b) =>
     createEventSchema.parse(b),
   );
-
-  console.log('Creating event with body:', body);
 
   const [newEvent] = await db
     .insert(events)
     .values({
       id: crypto.randomUUID(),
       name: body.name,
-      // Ensure date is a valid Date object
       eventDate: new Date(body.date),
       type: body.type,
       isActive: body.active,

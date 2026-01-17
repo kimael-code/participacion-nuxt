@@ -1,6 +1,5 @@
 import { and, count, eq, notInArray } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import {
   csvListings,
   employees,
@@ -15,10 +14,8 @@ const generateSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth and user provided by middleware
+  const { user } = event.context.auth!;
 
   const body = await readValidatedBody(event, (b) => generateSchema.parse(b));
 
@@ -34,7 +31,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Event not found' });
   }
 
-  // 2. Fetch Employees based on type
+  // 2. Get previous listings to implement incremental logic
+  const previousListings = await db.query.csvListings.findMany({
+    where: and(
+      eq(csvListings.eventId, body.eventId),
+      eq(csvListings.listingType, body.type),
+    ),
+    orderBy: (csvListings, { desc }) => [desc(csvListings.sequenceNumber)],
+  });
+
+  // Extract employee IDs from previous listings
+  // We'll store employee IDs in a new table: csvListingEmployees
+  // For now, we'll use a simpler approach: track by participation timestamp
+
+  // 3. Fetch Employees based on type
   let cedulas: string[] = [];
 
   if (body.type === 'participation') {
@@ -47,8 +57,21 @@ export default defineEventHandler(async (event) => {
       with: {
         employee: true,
       },
+      orderBy: (participations, { asc }) => [asc(participations.registeredAt)],
     });
-    cedulas = parts.map((p) => p.employee.cedula);
+
+    // INCREMENTAL LOGIC: Only include participations registered after last listing
+    let filteredParts = parts;
+
+    if (previousListings.length > 0) {
+      const lastListing = previousListings[0];
+      const lastListingDate = lastListing.generatedAt;
+
+      // Only include participations registered AFTER the last listing was generated
+      filteredParts = parts.filter((p) => p.registeredAt > lastListingDate);
+    }
+
+    cedulas = filteredParts.map((p) => p.employee.cedula);
   } else {
     // Non-participation: All employees of company MINUS those who participated
 
@@ -66,7 +89,6 @@ export default defineEventHandler(async (event) => {
     const participantIds = parts.map((p) => p.employeeId);
 
     // Fetch employees not in participantIds
-    // Note: notInArray requires at least one element. If no participants, fetch all.
     let whereClause = eq(employees.companyId, eventInfo.companyId);
 
     if (participantIds.length > 0) {
@@ -77,29 +99,45 @@ export default defineEventHandler(async (event) => {
     }
 
     const absentEmployees = await db
-      .select({ cedula: employees.cedula })
+      .select({
+        cedula: employees.cedula,
+        id: employees.id,
+      })
       .from(employees)
       .where(whereClause);
 
-    cedulas = absentEmployees.map((e) => e.cedula);
+    // INCREMENTAL LOGIC for non-participation
+    // Only include employees not in previous listings
+    let filteredEmployees = absentEmployees;
+
+    if (previousListings.length > 0) {
+      // Get all employee IDs from previous non-participation listings
+      // Since we don't have a tracking table yet, we'll include all for now
+      // TODO: Implement proper tracking table
+      filteredEmployees = absentEmployees;
+    }
+
+    cedulas = filteredEmployees.map((e) => e.cedula);
   }
 
-  // 3. Generate Content
+  // 4. Generate Content
   const csvContent = cedulas.join(',');
 
-  // 4. Calculate Sequence Number
-  const previousListings = await db
+  // 5. Calculate Sequence Number
+  const previousCount = await db
     .select({ count: count() })
     .from(csvListings)
-    .where(eq(csvListings.eventId, body.eventId));
+    .where(
+      and(
+        eq(csvListings.eventId, body.eventId),
+        eq(csvListings.listingType, body.type),
+      ),
+    );
 
-  const sequenceNumber = (previousListings[0]?.count || 0) + 1;
+  const sequenceNumber = (previousCount[0]?.count || 0) + 1;
 
-  // 5. Generate Filename: reporte_[TIPO]_[SEQ]_[HH_mm_dd_MM_yyyy].csv
+  // 6. Generate Filename: reporte_[TIPO]_[SEQ]_[HH_mm_dd_MM_yyyy].csv
   const now = new Date();
-  // Timestamp manual formatting logic below ignores this unused var
-
-  // es-VE might give dd/MM/yyyy, HH:mm. Adjust manual formatting to be safe and match user specific format: HH_mm_dd_MM_yyyy
 
   const pad = (n: number) => n.toString().padStart(2, '0');
   const customTimestamp = `${pad(now.getHours())}_${pad(now.getMinutes())}_${pad(now.getDate())}_${pad(now.getMonth() + 1)}_${now.getFullYear()}`;
@@ -108,7 +146,7 @@ export default defineEventHandler(async (event) => {
     body.type === 'participation' ? 'asistencia' : 'inasistencia';
   const fileName = `reporte_${typeLabel}_${sequenceNumber}_${customTimestamp}.csv`;
 
-  // 6. Save Metadata
+  // 7. Save Metadata
   await db.insert(csvListings).values({
     id: crypto.randomUUID(),
     eventId: body.eventId,
@@ -116,13 +154,13 @@ export default defineEventHandler(async (event) => {
     recordCount: cedulas.length,
     listingType: body.type,
     sequenceNumber: sequenceNumber,
-    generatedBy: session.user.id,
+    generatedBy: user.id,
     generatedAt: now,
     createdAt: now,
   });
 
-  // 7. Return File
-  setResponseHeader(event, 'Content-Type', 'text/csv');
+  // 8. Return File
+  setResponseHeader(event, 'Content-Type', 'text/csv; charset=utf-8');
   setResponseHeader(
     event,
     'Content-Disposition',

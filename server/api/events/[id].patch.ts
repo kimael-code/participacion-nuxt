@@ -1,8 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import { events } from '~~/server/database/schema';
-import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
 const updateEventSchema = z.object({
@@ -14,17 +12,10 @@ const updateEventSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
-
-  const companyId = await getUserCompanyId(session.user.id, event);
-  if (!companyId) {
-    throw createError({ statusCode: 403, message: 'Unauthorized' });
-  }
-
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
   const id = getRouterParam(event, 'id');
+
   if (!id) {
     throw createError({ statusCode: 400, message: 'ID required' });
   }

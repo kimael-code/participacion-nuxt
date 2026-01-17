@@ -1,17 +1,10 @@
 import { and, eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
-import { events, userCompanies } from '~~/server/database/schema';
+import { events } from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-
-  if (!session) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized',
-    });
-  }
+  // Auth and companyId provided by middleware
+  const { companyId, user } = event.context.auth!;
 
   const body = await readBody(event);
   const { eventId } = body;
@@ -23,30 +16,15 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Get the company of the event to ensure user has access
+  // Get the event and verify it belongs to user's company
   const targetEvent = await db.query.events.findFirst({
-    where: eq(events.id, eventId),
+    where: and(eq(events.id, eventId), eq(events.companyId, companyId)),
   });
 
   if (!targetEvent) {
     throw createError({
       statusCode: 404,
-      statusMessage: 'Event not found',
-    });
-  }
-
-  // Verify user has access to this company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: and(
-      eq(userCompanies.userId, session.user.id),
-      eq(userCompanies.companyId, targetEvent.companyId),
-    ),
-  });
-
-  if (!userCompany) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Forbidden',
+      statusMessage: 'Event not found or access denied',
     });
   }
 
@@ -56,7 +34,7 @@ export default defineEventHandler(async (event) => {
     await tx
       .update(events)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(events.companyId, targetEvent.companyId));
+      .where(eq(events.companyId, companyId));
 
     // Activate the selected event
     await tx

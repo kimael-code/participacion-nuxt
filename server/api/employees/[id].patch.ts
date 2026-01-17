@@ -1,47 +1,44 @@
 import { and, eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
+import { z } from 'zod';
 import { employees } from '~~/server/database/schema';
-import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
+const updateEmployeeSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  cedula: z.string().optional(),
+  administrativeUnitId: z.string().optional(),
+  locationId: z.string().optional(),
+});
+
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
   const id = getRouterParam(event, 'id');
 
-  if (!session || !id) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
+  if (!id) {
+    throw createError({ statusCode: 400, message: 'ID required' });
   }
 
-  const body = await readBody(event);
+  const body = await readValidatedBody(event, (b) =>
+    updateEmployeeSchema.parse(b),
+  );
 
-  // Get target company ID
-  const companyId = await getUserCompanyId(session.user.id);
-
-  if (!companyId) {
-    throw createError({ statusCode: 403, message: 'Unauthorized' });
-  }
-
-  const updatedEmployee = await db
+  const [updated] = await db
     .update(employees)
     .set({
-      cedula: body.cedula,
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: body.email,
-      phone: body.phone,
-      administrativeUnitId: body.administrativeUnitId,
-      locationId: body.locationId || null,
+      ...body,
       updatedAt: new Date(),
     })
     .where(and(eq(employees.id, id), eq(employees.companyId, companyId)))
     .returning();
 
-  if (updatedEmployee.length === 0) {
+  if (!updated) {
     throw createError({
       statusCode: 404,
       message: 'Employee not found or not in company',
     });
   }
 
-  return updatedEmployee[0];
+  return updated;
 });

@@ -40,7 +40,7 @@ watch(
   events,
   (newEvents) => {
     if (newEvents && newEvents.length > 0 && !selectedEventId.value) {
-      selectedEventId.value = newEvents[0].id;
+      selectedEventId.value = newEvents[0]!.id;
     }
   },
   { immediate: true },
@@ -63,21 +63,35 @@ const generateReport = async (type: 'participation' | 'non_participation') => {
 
   isGenerating.value = true;
   try {
-    const response = await $fetch<Blob>('/api/listings/generate', {
+    // Use native fetch to access response headers
+    const response = await fetch('/api/listings/generate', {
       method: 'POST',
-      body: {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         eventId: selectedEventId.value,
         type,
-      },
-      responseType: 'blob',
+      }),
     });
 
+    if (!response.ok) {
+      throw new Error('Failed to generate report');
+    }
+
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const fileNameMatch = contentDisposition?.match(/filename="(.+)"/);
+    const fileName = fileNameMatch?.[1] || `reporte_${type}_${Date.now()}.csv`;
+
+    // Get blob from response
+    const blob = await response.blob();
+
     // Trigger Download
-    const url = window.URL.createObjectURL(response);
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-
-    a.download = `reporte_generado.csv`; // Fallback name
+    a.download = fileName; // Use extracted filename
 
     document.body.appendChild(a);
     a.click();

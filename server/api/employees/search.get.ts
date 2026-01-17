@@ -1,13 +1,10 @@
 import { and, eq, like, or } from 'drizzle-orm';
-import { auth } from '../../auth';
-import { employees, userCompanies } from '../../database/schema';
+import { employees } from '../../database/schema';
 import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
 
   const query = getQuery(event);
   const searchQuery = query.q as string;
@@ -19,18 +16,9 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Get user's company
-  const userCompany = await db.query.userCompanies.findFirst({
-    where: eq(userCompanies.userId, session.user.id),
-  });
-
-  if (!userCompany) {
-    return [];
-  }
-
   const results = await db.query.employees.findMany({
     where: and(
-      eq(employees.companyId, userCompany.companyId),
+      eq(employees.companyId, companyId),
       or(
         like(employees.cedula, `%${searchQuery}%`),
         like(employees.firstName, `%${searchQuery}%`),

@@ -1,13 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
 import {
   administrativeUnits,
   employees,
   events,
   nonParticipationReasons,
   participations,
-  userCompanies,
 } from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
@@ -20,33 +18,22 @@ const querySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
 
   const query = await getValidatedQuery(event, (q) => querySchema.parse(q));
   const { eventId, unitId, status } = query;
 
-  // Validate Event and Access
+  // Validate Event belongs to user's company
   const targetEvent = await db.query.events.findFirst({
-    where: eq(events.id, eventId),
+    where: and(eq(events.id, eventId), eq(events.companyId, companyId)),
   });
 
   if (!targetEvent) {
-    throw createError({ statusCode: 404, message: 'Event not found' });
-  }
-
-  // Check user access to company
-  const userAccess = await db.query.userCompanies.findFirst({
-    where: and(
-      eq(userCompanies.userId, session.user.id),
-      eq(userCompanies.companyId, targetEvent.companyId),
-    ),
-  });
-
-  if (!userAccess) {
-    throw createError({ statusCode: 403, message: 'Forbidden' });
+    throw createError({
+      statusCode: 404,
+      message: 'Event not found or access denied',
+    });
   }
 
   // Build Query

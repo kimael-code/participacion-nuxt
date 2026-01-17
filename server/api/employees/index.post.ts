@@ -1,42 +1,37 @@
-import { auth } from '~~/server/auth';
+import { z } from 'zod';
 import { employees } from '~~/server/database/schema';
-import { getUserCompanyId } from '~~/server/utils/auth';
 import { db } from '~~/server/utils/db';
 
+const createEmployeeSchema = z.object({
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+  cedula: z.string().min(6),
+  administrativeUnitId: z.string().optional(),
+  locationId: z.string().optional(),
+});
+
 export default defineEventHandler(async (event) => {
-  const session = await auth.api.getSession({ headers: event.headers });
-  if (!session) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' });
-  }
+  // Auth and companyId provided by middleware
+  const { companyId } = event.context.auth!;
 
-  const body = await readBody(event);
+  const body = await readValidatedBody(event, (b) =>
+    createEmployeeSchema.parse(b),
+  );
 
-  // Get target company ID
-  const companyId = await getUserCompanyId(session.user.id);
-
-  if (!companyId) {
-    throw createError({
-      statusCode: 403,
-      message: 'User does not belong to any company and no fallback available',
-    });
-  }
-
-  const newEmployee = await db
+  const [employee] = await db
     .insert(employees)
     .values({
       id: crypto.randomUUID(),
-      cedula: body.cedula,
       firstName: body.firstName,
       lastName: body.lastName,
-      email: body.email,
-      phone: body.phone,
-      companyId: companyId,
+      cedula: body.cedula,
       administrativeUnitId: body.administrativeUnitId,
-      locationId: body.locationId || null,
+      locationId: body.locationId,
+      companyId: companyId,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
     .returning();
 
-  return newEmployee[0];
+  return employee;
 });
