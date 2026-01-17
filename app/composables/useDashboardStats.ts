@@ -39,7 +39,8 @@ export function useDashboardStats(eventId: Ref<string | null>) {
 
     try {
       const url = `/api/dashboard/stats?eventId=${eventId.value}`;
-      eventSource = new EventSource(url);
+      console.log('Connecting to SSE:', url);
+      eventSource = new EventSource(url, { withCredentials: true });
 
       eventSource.onopen = () => {
         isConnected.value = true;

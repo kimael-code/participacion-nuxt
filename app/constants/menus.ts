@@ -21,6 +21,12 @@ export const navMenu: NavSectionTitle[] = [
         icon: 'i-lucide-file-text',
         permission: 'reports:read',
       },
+      {
+        title: 'Vista Presentación',
+        link: '/dashboard/presentation',
+        icon: 'i-lucide-presentation',
+        permission: 'reports:read',
+      },
     ],
   },
   {

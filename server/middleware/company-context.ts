@@ -38,8 +38,11 @@ export default defineEventHandler(async (event) => {
     '/api/reports',
   ];
 
-  // Skip middleware si no es una ruta protegida
-  if (!requiresCompany.some((route) => path.startsWith(route))) {
+  // Skip middleware si no es una ruta protegida o si es una ruta excluida específicamente
+  if (
+    !requiresCompany.some((route) => path.startsWith(route)) ||
+    path.startsWith('/api/dashboard/stats')
+  ) {
     return;
   }
 
@@ -63,8 +66,8 @@ export default defineEventHandler(async (event) => {
 
   // Guardar en context para que los endpoints lo usen
   event.context.auth = {
-    session,
+    session: session.session,
     user: session.user,
     companyId,
-  };
+  } as any;
 });

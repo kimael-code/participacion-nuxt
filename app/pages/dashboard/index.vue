@@ -50,9 +50,7 @@ const formatPercentage = (value: number) => {
 <template>
   <div class="flex flex-col gap-6">
     <!-- Event Selector - Prominent -->
-    <Card
-      class="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10"
-    >
+    <Card class="border-primary/20 bg-linear-to-r from-primary/5 to-primary/10">
       <CardContent class="p-6">
         <div
           class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
@@ -106,16 +104,31 @@ const formatPercentage = (value: number) => {
               </Select>
             </ClientOnly>
 
-            <Button
-              v-if="selectedEventId && selectedEventId !== activeEvent?.id"
-              variant="default"
-              size="sm"
-              class="w-full md:w-auto"
-              @click="handleSetActive(selectedEventId)"
-            >
-              <Icon name="i-lucide-check-circle" class="mr-2 h-4 w-4" />
-              Establecer como Activo
-            </Button>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center">
+              <Button
+                v-if="usePermissions().hasPermission('reports:read')"
+                variant="outline"
+                size="sm"
+                class="w-full md:w-auto"
+                as-child
+              >
+                <NuxtLink to="/dashboard/presentation">
+                  <Icon name="i-lucide-presentation" class="mr-2 h-4 w-4" />
+                  Modo Presentación
+                </NuxtLink>
+              </Button>
+
+              <Button
+                v-if="selectedEventId && selectedEventId !== activeEvent?.id"
+                variant="default"
+                size="sm"
+                class="w-full md:w-auto"
+                @click="handleSetActive(selectedEventId)"
+              >
+                <Icon name="i-lucide-check-circle" class="mr-2 h-4 w-4" />
+                Establecer como Activo
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

@@ -1,11 +1,9 @@
 import { eq } from 'drizzle-orm';
+import { auth } from '../../auth';
 import { events, participations } from '../../database/schema';
+import { getUserCompanyId } from '../../utils/auth';
 import { db } from '../../utils/db';
 
-/**
- * SSE endpoint for real-time dashboard statistics
- * Returns Server-Sent Events with participation stats
- */
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const eventId = query.eventId as string;
@@ -17,19 +15,42 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  // 1. Manual Auth Check for SSE
+  const session = await auth.api.getSession({ headers: event.headers });
+  if (!session) {
+    console.error('[SSE] Unauthorized access attempt');
+    throw createError({
+      statusCode: 401,
+      message: 'Unauthorized',
+    });
+  }
+
+  // 2. Manual Company Check
+  const companyId = await getUserCompanyId(session.user.id, event);
+  if (!companyId) {
+    console.error(`[SSE] User ${session.user.id} has no company context`);
+    throw createError({
+      statusCode: 403,
+      message: 'No company access',
+    });
+  }
+
+  console.log(
+    `[SSE] Connection established for Event: ${eventId}, User: ${session.user.id}, Company: ${companyId}`,
+  );
+
   // Set SSE headers
   setResponseHeaders(event, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no', // Disable buffering for Nginx
   });
 
   const eventStream = createEventStream(event);
 
-  // Function to fetch and send stats
   const sendStats = async () => {
     try {
-      // Get all employees for the company of this event
       const eventData = await db.query.events.findFirst({
         where: eq(events.id, eventId),
         with: {
@@ -46,13 +67,22 @@ export default defineEventHandler(async (event) => {
       });
 
       if (!eventData) {
+        console.warn(`[SSE] Event ${eventId} not found`);
         return;
       }
 
-      const allEmployees = eventData.company.employees;
+      // Verify that the event belongs to the users' company context (security)
+      if (eventData.companyId !== companyId) {
+        console.error(
+          `[SSE] Security breach: User ${session.user.id} tried to access event ${eventId} from company ${eventData.companyId}`,
+        );
+        await eventStream.push(JSON.stringify({ error: 'Forbidden' }));
+        return;
+      }
+
+      const allEmployees = eventData.company.employees || [];
       const totalEmployees = allEmployees.length;
 
-      // Get participations for this event
       const eventParticipations = await db.query.participations.findMany({
         where: eq(participations.eventId, eventId),
         with: {
@@ -64,7 +94,6 @@ export default defineEventHandler(async (event) => {
         },
       });
 
-      // Calculate stats
       const participated = eventParticipations.filter(
         (p) => p.participated,
       ).length;
@@ -73,20 +102,8 @@ export default defineEventHandler(async (event) => {
       ).length;
       const pending = totalEmployees - participated - notParticipated;
 
-      // Stats by administrative unit
-      const unitStats = new Map<
-        string,
-        {
-          unitId: string;
-          unitName: string;
-          total: number;
-          participated: number;
-          notParticipated: number;
-          pending: number;
-        }
-      >();
+      const unitStats = new Map<string, any>();
 
-      // Initialize units
       allEmployees.forEach((emp) => {
         if (emp.administrativeUnit) {
           const unitId = emp.administrativeUnit.id;
@@ -100,30 +117,24 @@ export default defineEventHandler(async (event) => {
               pending: 0,
             });
           }
-          const stats = unitStats.get(unitId)!;
-          stats.total++;
+          const s = unitStats.get(unitId)!;
+          s.total++;
         }
       });
 
-      // Count participations by unit
       eventParticipations.forEach((p) => {
-        if (p.employee.administrativeUnit) {
+        if (p.employee?.administrativeUnit) {
           const unitId = p.employee.administrativeUnit.id;
-          const stats = unitStats.get(unitId);
-          if (stats) {
-            if (p.participated) {
-              stats.participated++;
-            } else {
-              stats.notParticipated++;
-            }
+          const s = unitStats.get(unitId);
+          if (s) {
+            if (p.participated) s.participated++;
+            else s.notParticipated++;
           }
         }
       });
 
-      // Calculate pending for each unit
-      unitStats.forEach((stats) => {
-        stats.pending =
-          stats.total - stats.participated - stats.notParticipated;
+      unitStats.forEach((s) => {
+        s.pending = s.total - s.participated - s.notParticipated;
       });
 
       const data = {
@@ -140,19 +151,17 @@ export default defineEventHandler(async (event) => {
       };
 
       await eventStream.push(JSON.stringify(data));
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+    } catch (err) {
+      console.error('[SSE] Error sending stats:', err);
     }
   };
 
-  // Send initial stats
-  await sendStats();
-
-  // Send updates every 5 seconds
+  // Run immediately and then start interval
+  sendStats();
   const interval = setInterval(sendStats, 5000);
 
-  // Cleanup on close
   eventStream.onClosed(async () => {
+    console.log(`[SSE] Connection closed for user ${session.user.id}`);
     clearInterval(interval);
     await eventStream.close();
   });
