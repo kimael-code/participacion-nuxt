@@ -9,6 +9,7 @@ import {
   municipalities,
   nonParticipationReasons,
   parishes,
+  participations,
   permissions,
   rolePermissions,
   roles,
@@ -17,10 +18,18 @@ import {
 } from './schema';
 
 async function seed() {
-  console.log('🌱 Starting seed...');
+  // Check for development environment
+  if (process.env.NODE_ENV !== 'development') {
+    console.error(
+      '❌ Error: Seed script can only be run in development environment.',
+    );
+    process.exit(1);
+  }
+
+  console.log('🌱 Starting advanced seed...');
 
   try {
-    // 0. Roles y Permisos
+    // 0. Base Data: Roles & Permissions
     console.log('Inserting RBAC data...');
 
     const permissionsList = [
@@ -96,7 +105,7 @@ async function seed() {
     ];
 
     const roleToPerms: Record<string, string[]> = {
-      admin: permissionsList.map((p) => p.slug), // All
+      admin: permissionsList.map((p) => p.slug),
       operator: ['participation:register', 'employees:read', 'events:read'],
       reporter: ['reports:read', 'reports:export', 'employees:read'],
     };
@@ -118,7 +127,6 @@ async function seed() {
         })
         .returning();
 
-      // Assign permissions to role
       const permsToAssign = roleToPerms[r.slug] || [];
       for (const pSlug of permsToAssign) {
         await db
@@ -133,50 +141,31 @@ async function seed() {
       }
     }
 
-    // 1. Estados, Municipios, Parroquias (Data de ejemplo de Venezuela)
+    // 1. Geographic Data
     console.log('Inserting geographic data...');
-
-    // Estado Lara (Ejemplo)
     const [lara] = await db
       .insert(states)
-      .values({
-        id: crypto.randomUUID(),
-        name: 'Lara',
-        code: 'LAR',
-      })
-      .onConflictDoUpdate({
-        target: states.name,
-        set: { code: 'LAR' },
-      })
+      .values({ id: crypto.randomUUID(), name: 'Lara', code: 'LAR' })
+      .onConflictDoUpdate({ target: states.name, set: { code: 'LAR' } })
       .returning();
-
-    // Municipio Iribarren
     const [iribarren] = await db
       .insert(municipalities)
-      .values({
-        id: crypto.randomUUID(),
-        name: 'Iribarren',
-        stateId: lara.id,
-      })
+      .values({ id: crypto.randomUUID(), name: 'Iribarren', stateId: lara.id })
       .onConflictDoUpdate({
         target: [municipalities.name, municipalities.stateId],
         set: { name: 'Iribarren' },
       })
       .returning();
 
-    // Parroquias de Iribarren
-    const parishesList = [
+    const parishesNames = [
       'Catedral',
       'Concepción',
-      'El Cují',
-      'Juan de Villegas',
       'Santa Rosa',
       'Tamaca',
       'Unión',
     ];
-
     const createdParishes = [];
-    for (const pName of parishesList) {
+    for (const pName of parishesNames) {
       const [p] = await db
         .insert(parishes)
         .values({
@@ -192,169 +181,195 @@ async function seed() {
       createdParishes.push(p);
     }
 
-    // 2. Empresa de Prueba
-    console.log('Inserting company data...');
-    const [company] = await db
-      .insert(companies)
-      .values({
-        id: crypto.randomUUID(),
-        name: 'Empresa Demo C.A.',
-        rif: 'J-12345678-9',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: companies.rif,
-        set: { name: 'Empresa Demo C.A.', updatedAt: new Date() },
-      })
-      .returning();
-
-    // 3. Unidades Administrativas
-    console.log('Inserting administrative units...');
-    const unitsList = [
-      'Recursos Humanos',
-      'Tecnología',
-      'Finanzas',
-      'Operaciones',
-      'Ventas',
-    ];
-
-    const createdUnits = [];
-    for (const uName of unitsList) {
-      const [unit] = await db
-        .insert(administrativeUnits)
-        .values({
-          id: crypto.randomUUID(),
-          name: uName,
-          companyId: company.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: [administrativeUnits.name, administrativeUnits.companyId],
-          set: { updatedAt: new Date() },
-        })
-        .returning();
-      createdUnits.push(unit);
-    }
-
-    // 5. Voting Centers
-    console.log('Inserting locations...');
-    const centersList = [
-      {
-        name: 'Escuela Básica Ciudad de Barquisimeto',
-        address: 'Av. Libertador',
-      },
-      { name: 'Liceo Bolivariano El Recreo', address: 'Calle 5' },
-      { name: 'Centro Comunitario La Paz', address: 'Av. Principal' },
-    ];
-
-    const createdCenters = [];
-    for (const center of centersList) {
-      const randomParish =
-        createdParishes[Math.floor(Math.random() * createdParishes.length)];
-      const [c] = await db
-        .insert(locations)
-        .values({
-          id: crypto.randomUUID(),
-          name: center.name,
-          type: LocationType.VOTING_CENTER,
-          address: center.address,
-          parishId: randomParish.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .onConflictDoNothing()
-        .returning();
-      createdCenters.push(c);
-    }
-
-    // 6. Empleados
-    console.log('Inserting employees...');
-    const employeesCount = 50;
-    for (let i = 0; i < employeesCount; i++) {
-      const unit =
-        createdUnits[Math.floor(Math.random() * createdUnits.length)];
-      const center =
-        createdCenters[Math.floor(Math.random() * createdCenters.length)];
-
-      await db
-        .insert(employees)
-        .values({
-          id: crypto.randomUUID(),
-          cedula: Math.floor(10000000 + Math.random() * 20000000).toString(),
-          firstName: `Nombre${i}`,
-          lastName: `Apellido${i}`,
-          email: `empleado${i}@empresa.com`,
-          companyId: company.id,
-          administrativeUnitId: unit.id,
-          votingCenterId: center.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .onConflictDoNothing();
-    }
-
-    // 6. Evento de Prueba
-    console.log('Inserting event...');
-    const [event] = await db
-      .insert(events)
-      .values({
-        id: crypto.randomUUID(),
-        name: 'Elecciones Sindicales 2026',
-        description: 'Elección de representantes sindicales',
-        eventDate: new Date(),
-        companyId: company.id,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: events.name,
-        set: {
-          description: 'Elección de representantes sindicales',
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-
-    // 7. Motivos de No Participación
-    console.log('Inserting non-participation reasons...');
+    // 2. Non-participation Reasons
+    console.log('Inserting reasons...');
     const reasonsList = [
       'Enfermedad',
       'Viaje',
       'Emergencia Familiar',
       'Turno de Trabajo',
+      'Vacaciones',
       'Otro',
     ];
-
-    for (const reason of reasonsList) {
-      await db
+    const reasonIds = [];
+    for (const rName of reasonsList) {
+      const [reason] = await db
         .insert(nonParticipationReasons)
-        .values({
-          id: crypto.randomUUID(),
-          name: reason,
-          createdAt: new Date(),
-        })
-        .onConflictDoNothing();
+        .values({ id: crypto.randomUUID(), name: rName, createdAt: new Date() })
+        .onConflictDoNothing()
+        .returning();
+      if (reason) reasonIds.push(reason.id);
     }
 
-    // 8. Vincular usuarios existentes a la empresa (Modo Dev)
-    console.log('Checking for existing users to link...');
-    const existingUsers = await db.query.users.findMany();
-    for (const u of existingUsers) {
-      await db
-        .insert(userCompanies)
+    // 3. Companies & Related Data
+    const companiesToCreate = [
+      {
+        name: 'Corporación Tecnológica Alpha',
+        rif: 'J-10000000-1',
+        employeeCount: 50,
+        units: [
+          'Dirección de Tecnología',
+          'Departamento de Sistemas',
+          'Infraestructura y Redes',
+          'I+D',
+        ],
+      },
+      {
+        name: 'Servicios Industriales Beta',
+        rif: 'J-20000000-2',
+        employeeCount: 150,
+        units: [
+          'Gerencia de Informática',
+          'Soporte Técnico',
+          'Procesamientos de Datos',
+          'Seguridad Digital',
+        ],
+      },
+    ];
+
+    const allExistingUserIds = (await db.query.users.findMany()).map(
+      (u) => u.id,
+    );
+
+    for (const companyDef of companiesToCreate) {
+      console.log(`Processing company: ${companyDef.name}`);
+
+      const [company] = await db
+        .insert(companies)
         .values({
           id: crypto.randomUUID(),
-          userId: u.id,
-          companyId: company.id,
+          name: companyDef.name,
+          rif: companyDef.rif,
           createdAt: new Date(),
+          updatedAt: new Date(),
         })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: companies.rif,
+          set: { name: companyDef.name, updatedAt: new Date() },
+        })
+        .returning();
+
+      // Units for this company
+      const createdUnits = [];
+      for (const uName of companyDef.units) {
+        const [unit] = await db
+          .insert(administrativeUnits)
+          .values({
+            id: crypto.randomUUID(),
+            name: uName,
+            companyId: company.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [administrativeUnits.name, administrativeUnits.companyId],
+            set: { updatedAt: new Date() },
+          })
+          .returning();
+        createdUnits.push(unit);
+      }
+
+      // Locations for this company
+      const [location] = await db
+        .insert(locations)
+        .values({
+          id: crypto.randomUUID(),
+          name: `Sede Principal - ${companyDef.name}`,
+          type: LocationType.OFFICE,
+          address: 'Calle Real con Av. Libertador',
+          parishId: createdParishes[0].id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      // Employees
+      console.log(`  Creating ${companyDef.employeeCount} employees...`);
+      const employeesList = [];
+      for (let i = 0; i < companyDef.employeeCount; i++) {
+        const unit =
+          createdUnits[Math.floor(Math.random() * createdUnits.length)];
+        const [employee] = await db
+          .insert(employees)
+          .values({
+            id: crypto.randomUUID(),
+            cedula: `${10000000 + Math.floor(Math.random() * 20000000)}`,
+            firstName: `Empleado_${companyDef.rif.split('-')[1]}_${i}`,
+            lastName: 'Prueba',
+            email: `emp_${i}@${companyDef.rif.toLowerCase()}.com`,
+            companyId: company.id,
+            administrativeUnitId: unit.id,
+            locationId: location.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .onConflictDoNothing()
+          .returning();
+        if (employee) employeesList.push(employee);
+      }
+
+      // Event
+      const [event] = await db
+        .insert(events)
+        .values({
+          id: crypto.randomUUID(),
+          name: `Evento de Participación - ${companyDef.name}`,
+          description: 'Medición de compromiso trimestral',
+          type: 'other',
+          eventDate: new Date(),
+          companyId: company.id,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      // Participations
+      if (event && employeesList.length > 0) {
+        console.log(
+          `  Generating random participation for ${employeesList.length} employees...`,
+        );
+        for (const employee of employeesList) {
+          const participated = Math.random() > 0.3; // 70% participation
+          const hasReason = !participated && Math.random() > 0.5;
+
+          await db
+            .insert(participations)
+            .values({
+              id: crypto.randomUUID(),
+              employeeId: employee.id,
+              eventId: event.id,
+              participated,
+              nonParticipationReasonId: hasReason
+                ? reasonIds[Math.floor(Math.random() * reasonIds.length)]
+                : null,
+              registeredBy: allExistingUserIds[0] || null,
+              registeredAt: new Date(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .onConflictDoNothing();
+        }
+      }
+
+      // Link existing users to this company
+      for (const userId of allExistingUserIds) {
+        await db
+          .insert(userCompanies)
+          .values({
+            id: crypto.randomUUID(),
+            userId,
+            companyId: company.id,
+            role: 'admin',
+            createdAt: new Date(),
+          })
+          .onConflictDoNothing();
+      }
     }
-    console.log(`Company ID: ${company.id}`);
-    console.log(`Event ID: ${event.id}`);
+
+    console.log('✅ Advanced seed completed successfully!');
   } catch (error) {
     console.error('❌ Seed failed:', error);
     process.exit(1);
