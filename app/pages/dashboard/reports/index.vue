@@ -67,7 +67,7 @@ watch(
   events,
   (newEvents) => {
     if (newEvents && newEvents.length > 0 && !selectedEventId.value) {
-      selectedEventId.value = newEvents[0].id;
+      selectedEventId.value = newEvents[0]!.id;
     }
   },
   { immediate: true },
@@ -303,7 +303,7 @@ const getStatusLabel = (status: string) => {
               <TableCell>
                 <Badge
                   v-if="item.status === 'participated'"
-                  variant="success"
+                  variant="secondary"
                   class="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                   >Asistió</Badge
                 >
