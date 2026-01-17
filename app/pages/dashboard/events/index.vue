@@ -33,6 +33,8 @@ const { selectedCompany } = storeToRefs(store);
 const searchQuery = ref('');
 const showDialog = ref(false);
 const editingEvent = ref<Event | null>(null);
+const showDeleteDialog = ref(false);
+const eventToDelete = ref<Event | null>(null);
 
 // Fetch events (dependent on selectedCompany)
 const {
@@ -58,16 +60,24 @@ const handleEdit = (event: Event) => {
   showDialog.value = true;
 };
 
-const handleDelete = async (id: string) => {
-  if (!confirm('¿Eliminar evento?')) return;
+const confirmDelete = (event: Event) => {
+  eventToDelete.value = event;
+  showDeleteDialog.value = true;
+};
+
+const handleDelete = async () => {
+  if (!eventToDelete.value) return;
 
   try {
-    await $fetch(`/api/events/${id}`, { method: 'DELETE' });
+    await $fetch(`/api/events/${eventToDelete.value.id}`, { method: 'DELETE' });
     toast.success('Evento eliminado');
     refresh();
   } catch (error) {
     console.error(error);
     toast.error('Error al eliminar evento');
+  } finally {
+    showDeleteDialog.value = false;
+    eventToDelete.value = null;
   }
 };
 
@@ -229,7 +239,7 @@ const handleSaved = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       class="text-destructive"
-                      @click="handleDelete(event.id)"
+                      @click="confirmDelete(event)"
                     >
                       <Trash2 class="mr-2 h-4 w-4" /> Eliminar
                     </DropdownMenuItem>
@@ -249,5 +259,28 @@ const handleSaved = () => {
       @close="showDialog = false"
       @saved="handleSaved"
     />
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog v-model:open="showDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminará permanentemente
+            <strong>{{ eventToDelete?.name }}</strong> y todas sus
+            participaciones asociadas.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleDelete"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

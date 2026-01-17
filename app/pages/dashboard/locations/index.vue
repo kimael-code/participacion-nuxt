@@ -31,6 +31,8 @@ const searchQuery = ref('');
 const selectedType = ref('all');
 const showDialog = ref(false);
 const editingLocation = ref<Location | null>(null);
+const showDeleteDialog = ref(false);
+const locationToDelete = ref<Location | null>(null);
 
 // Fetch locations (global catalog)
 const {
@@ -81,16 +83,26 @@ const handleEdit = (location: Location) => {
   showDialog.value = true;
 };
 
-const handleDelete = async (id: string) => {
-  if (!confirm('¿Eliminar ubicación?')) return;
+const confirmDelete = (location: Location) => {
+  locationToDelete.value = location;
+  showDeleteDialog.value = true;
+};
+
+const handleDelete = async () => {
+  if (!locationToDelete.value) return;
 
   try {
-    await $fetch(`/api/locations/${id}`, { method: 'DELETE' });
+    await $fetch(`/api/locations/${locationToDelete.value.id}`, {
+      method: 'DELETE',
+    });
     toast.success('Ubicación eliminada');
     refresh();
   } catch (error) {
     console.error(error);
     toast.error('Error al eliminar ubicación');
+  } finally {
+    showDeleteDialog.value = false;
+    locationToDelete.value = null;
   }
 };
 
@@ -220,7 +232,7 @@ const handleSaved = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       class="text-destructive"
-                      @click="handleDelete(loc.id)"
+                      @click="confirmDelete(loc)"
                     >
                       <Trash2 class="mr-2 h-4 w-4" /> Eliminar
                     </DropdownMenuItem>
@@ -240,5 +252,28 @@ const handleSaved = () => {
       @close="showDialog = false"
       @saved="handleSaved"
     />
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog v-model:open="showDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminará permanentemente
+            <strong>{{ locationToDelete?.name }}</strong
+            >.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleDelete"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

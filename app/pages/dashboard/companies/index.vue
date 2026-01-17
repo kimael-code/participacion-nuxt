@@ -27,6 +27,8 @@ interface Company {
 const searchQuery = ref('');
 const showDialog = ref(false);
 const editingCompany = ref<Company | null>(null);
+const showDeleteDialog = ref(false);
+const companyToDelete = ref<Company | null>(null);
 
 // Fetch companies (reusing the same API as for the switcher context)
 // But here we want to manage them.
@@ -52,22 +54,30 @@ const handleEdit = (company: Company) => {
   showDialog.value = true;
 };
 
-const handleDelete = async (id: string) => {
-  if (
-    !confirm(
-      '¿Está seguro de que desea eliminar esta empresa? Esta acción no se puede deshacer y borrará todos los datos asociados.',
-    )
-  )
-    return;
+const confirmDelete = (company: Company) => {
+  companyToDelete.value = company;
+  showDeleteDialog.value = true;
+};
+
+const handleDelete = async () => {
+  if (!companyToDelete.value) return;
 
   try {
-    await $fetch(`/api/companies/${id}`, { method: 'DELETE' });
+    await $fetch(`/api/companies/${companyToDelete.value.id}`, {
+      method: 'DELETE',
+    });
     toast.success('Empresa eliminada correctamente');
     refresh();
-    // Also refresh context if needed ideally
+    // Also refresh context
+    const store = useCompanyStore();
+    const { fetchUserCompanies } = store;
+    fetchUserCompanies();
   } catch (error) {
     console.error(error);
     toast.error('Error al eliminar empresa');
+  } finally {
+    showDeleteDialog.value = false;
+    companyToDelete.value = null;
   }
 };
 
@@ -179,7 +189,7 @@ const handleSaved = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       class="text-destructive"
-                      @click="handleDelete(company.id)"
+                      @click="confirmDelete(company)"
                     >
                       <Trash2 class="mr-2 h-4 w-4" /> Eliminar
                     </DropdownMenuItem>
@@ -199,5 +209,28 @@ const handleSaved = () => {
       @close="showDialog = false"
       @saved="handleSaved"
     />
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog v-model:open="showDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminará permanentemente
+            <strong>{{ companyToDelete?.name }}</strong> y todos sus datos
+            asociados (empleados, eventos, participaciones, etc.).
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            @click="handleDelete"
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

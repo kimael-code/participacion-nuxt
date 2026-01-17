@@ -63,21 +63,33 @@ const {
 
 const showEmployeeDialog = ref(false);
 const editingEmployee = ref<Employee | null>(null);
+const showDeleteDialog = ref(false);
+const employeeToDelete = ref<Employee | null>(null);
 
 const handleEdit = (employee: Employee) => {
   editingEmployee.value = employee;
   showEmployeeDialog.value = true;
 };
 
-const handleDelete = async (id: string) => {
-  if (!confirm('¿Está seguro de que desea eliminar este empleado?')) return;
+const confirmDelete = (employee: Employee) => {
+  employeeToDelete.value = employee;
+  showDeleteDialog.value = true;
+};
+
+const handleDelete = async () => {
+  if (!employeeToDelete.value) return;
 
   try {
-    await $fetch(`/api/employees/${id}`, { method: 'DELETE' });
+    await fetch(`/api/employees/${employeeToDelete.value.id}`, {
+      method: 'DELETE',
+    });
     toast.success('Empleado eliminado correctamente');
     refresh();
   } catch {
     toast.error('Error al eliminar empleado');
+  } finally {
+    showDeleteDialog.value = false;
+    employeeToDelete.value = null;
   }
 };
 
@@ -219,7 +231,7 @@ const { hasPermission } = usePermissions();
                     <DropdownMenuItem
                       v-if="hasPermission('employees:manage')"
                       class="text-destructive"
-                      @click="handleDelete(employee.id)"
+                      @click="confirmDelete(employee)"
                     >
                       <Trash2 class="mr-2 h-4 w-4" /> Eliminar
                     </DropdownMenuItem>
@@ -287,5 +299,31 @@ const { hasPermission } = usePermissions();
       @close="showEmployeeDialog = false"
       @saved="handleSaved"
     />
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog v-model:open="showDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminará permanentemente
+            <strong
+              >{{ employeeToDelete?.firstName }}
+              {{ employeeToDelete?.lastName }}</strong
+            >
+            (C.I. {{ employeeToDelete?.cedula }}).
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleDelete"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

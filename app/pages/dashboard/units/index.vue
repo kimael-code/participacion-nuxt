@@ -29,6 +29,8 @@ const { selectedCompany } = storeToRefs(store);
 const searchQuery = ref('');
 const showDialog = ref(false);
 const editingUnit = ref<AdministrativeUnit | null>(null);
+const showDeleteDialog = ref(false);
+const unitToDelete = ref<AdministrativeUnit | null>(null);
 
 // Fetch units (dependent on selectedCompany)
 // We need to watch selectedCompany because if it changes, units list must update
@@ -54,16 +56,24 @@ const handleEdit = (unit: AdministrativeUnit) => {
   showDialog.value = true;
 };
 
-const handleDelete = async (id: string) => {
-  if (!confirm('¿Eliminar unidad administrativa?')) return;
+const confirmDelete = (unit: AdministrativeUnit) => {
+  unitToDelete.value = unit;
+  showDeleteDialog.value = true;
+};
+
+const handleDelete = async () => {
+  if (!unitToDelete.value) return;
 
   try {
-    await $fetch(`/api/units/${id}`, { method: 'DELETE' });
+    await $fetch(`/api/units/${unitToDelete.value.id}`, { method: 'DELETE' });
     toast.success('Unidad eliminada');
     refresh();
   } catch (error) {
     console.error(error);
     toast.error('Error al eliminar unidad');
+  } finally {
+    showDeleteDialog.value = false;
+    unitToDelete.value = null;
   }
 };
 
@@ -168,7 +178,7 @@ const handleSaved = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       class="text-destructive"
-                      @click="handleDelete(unit.id)"
+                      @click="confirmDelete(unit)"
                     >
                       <Trash2 class="mr-2 h-4 w-4" /> Eliminar
                     </DropdownMenuItem>
@@ -188,5 +198,28 @@ const handleSaved = () => {
       @close="showDialog = false"
       @saved="handleSaved"
     />
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog v-model:open="showDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminará permanentemente
+            <strong>{{ unitToDelete?.name }}</strong
+            >.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleDelete"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
