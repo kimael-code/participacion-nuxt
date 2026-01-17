@@ -49,53 +49,74 @@ const formatPercentage = (value: number) => {
 
 <template>
   <div class="flex flex-col gap-6">
-    <!-- Stats Cards -->
-
-    <!-- Event Selector -->
-    <Card>
-      <CardHeader class="flex flex-row items-center justify-between space-y-0">
-        <CardTitle>Evento</CardTitle>
-        <div v-if="activeEvent" class="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            class="border-green-200 bg-green-50 text-green-700"
-          >
-            Activo: {{ activeEvent.name }}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div class="flex items-center gap-4">
-          <ClientOnly>
-            <Select
-              :model-value="selectedEventId || undefined"
-              @update:model-value="handleEventChange"
+    <!-- Event Selector - Prominent -->
+    <Card
+      class="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10"
+    >
+      <CardContent class="p-6">
+        <div
+          class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+        >
+          <div class="flex items-center gap-4">
+            <div
+              class="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 ring-4 ring-primary/5"
             >
-              <SelectTrigger class="w-[300px]">
-                <SelectValue placeholder="Seleccionar evento..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  v-for="evt in allEvents"
-                  :key="evt.id"
-                  :value="evt.id"
-                >
-                  {{ evt.name }} ({{
-                    new Date(evt.eventDate).toLocaleDateString()
-                  }})
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </ClientOnly>
+              <Icon name="i-lucide-calendar" class="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <p class="text-sm font-medium text-muted-foreground">
+                Evento Activo
+              </p>
+              <h3 class="text-xl font-bold">
+                {{ activeEvent?.name || 'Sin evento activo' }}
+              </h3>
+              <p v-if="activeEvent" class="text-sm text-muted-foreground">
+                {{
+                  new Date(activeEvent.eventDate).toLocaleDateString('es-VE', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                }}
+              </p>
+            </div>
+          </div>
 
-          <Button
-            v-if="selectedEventId && selectedEventId !== activeEvent?.id"
-            variant="outline"
-            size="sm"
-            @click="handleSetActive(selectedEventId)"
-          >
-            Establecer como Activo
-          </Button>
+          <div class="flex flex-col gap-2 md:items-end">
+            <ClientOnly>
+              <Select
+                :model-value="selectedEventId || undefined"
+                @update:model-value="handleEventChange"
+              >
+                <SelectTrigger class="w-full md:w-[300px]">
+                  <SelectValue placeholder="Seleccionar evento..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    v-for="evt in allEvents"
+                    :key="evt.id"
+                    :value="evt.id"
+                  >
+                    {{ evt.name }} ({{
+                      new Date(evt.eventDate).toLocaleDateString()
+                    }})
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </ClientOnly>
+
+            <Button
+              v-if="selectedEventId && selectedEventId !== activeEvent?.id"
+              variant="default"
+              size="sm"
+              class="w-full md:w-auto"
+              @click="handleSetActive(selectedEventId)"
+            >
+              <Icon name="i-lucide-check-circle" class="mr-2 h-4 w-4" />
+              Establecer como Activo
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -189,7 +210,9 @@ const formatPercentage = (value: number) => {
         </CardHeader>
         <CardContent>
           <div class="h-[300px]">
-            <DashboardUnitChart :units="stats?.byUnit" />
+            <DashboardUnitChart
+              :units="stats?.byUnit ? [...stats.byUnit] : undefined"
+            />
           </div>
         </CardContent>
       </Card>
