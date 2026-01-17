@@ -61,8 +61,6 @@ export const useParticipationHistory = () => {
   };
 
   const deleteParticipation = async (id: string, eventId: string) => {
-    if (!confirm('¿Deshacer este registro?')) return;
-
     try {
       await $fetch(`/api/participations/${id}`, { method: 'DELETE' });
       toast.success('Registro eliminado');

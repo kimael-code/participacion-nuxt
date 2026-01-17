@@ -51,6 +51,25 @@ const { registerParticipation, isSubmitting } = useParticipationRegistration();
 const { recentParticipations, fetchRecentAll, deleteParticipation } =
   useParticipationHistory();
 
+// Delete confirmation state
+const showDeleteParticipationDialog = ref(false);
+const participationToDelete = ref<RecentParticipation | null>(null);
+
+const confirmDeleteParticipation = (participation: RecentParticipation) => {
+  participationToDelete.value = participation;
+  showDeleteParticipationDialog.value = true;
+};
+
+const handleDeleteParticipation = async () => {
+  if (!participationToDelete.value) return;
+  await deleteParticipation(
+    participationToDelete.value.id,
+    participationToDelete.value.event.id,
+  );
+  showDeleteParticipationDialog.value = false;
+  participationToDelete.value = null;
+};
+
 // Computed: should show event selector?
 const shouldShowEventSelector = computed(() => {
   return events.value && events.value.length > 1;
@@ -343,7 +362,7 @@ const submitNoParticipation = async () => {
             <Button
               variant="ghost"
               size="icon"
-              @click="deleteParticipation(item.id, item.event.id)"
+              @click="confirmDeleteParticipation(item)"
             >
               <Icon
                 name="lucide:trash-2"
@@ -403,5 +422,34 @@ const submitNoParticipation = async () => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- Delete Participation Confirmation Dialog -->
+    <AlertDialog v-model:open="showDeleteParticipationDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminará permanentemente el
+            registro de
+            <strong
+              >{{ participationToDelete?.employee.firstName }}
+              {{ participationToDelete?.employee.lastName }}</strong
+            >
+            (C.I. {{ participationToDelete?.employee.cedula }}) para el evento
+            <strong>{{ participationToDelete?.event.name }}</strong
+            >.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleDeleteParticipation"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
