@@ -30,3 +30,5 @@ logs
 *.db-wal
 *.db-shm
 *.db-journal
+playwright-report/
+test-results/

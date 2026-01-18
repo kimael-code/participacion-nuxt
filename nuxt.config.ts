@@ -18,6 +18,7 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@nuxt/icon',
     '@pinia/nuxt',
+    '@nuxt/test-utils/module',
   ],
   colorMode: {
     classSuffix: '',

@@ -10,7 +10,9 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "db:seed": "tsx --env-file=.env server/database/seed.ts"
+    "db:seed": "tsx --env-file=.env server/database/seed.ts",
+    "test:unit": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
@@ -48,14 +50,19 @@
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.85",
     "@nuxt/eslint": "^1.10.0",
+    "@nuxt/test-utils": "^3.23.0",
     "@nuxtjs/color-mode": "^3.5.2",
+    "@playwright/test": "^1.57.0",
     "@types/papaparse": "^5.5.2",
+    "@vue/test-utils": "^2.4.6",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.1",
+    "happy-dom": "^20.3.1",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "prettier-plugin-tailwindcss": "^0.7.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
   }
 }
