@@ -1,6 +1,7 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, count, eq, like, or } from 'drizzle-orm';
 import {
   locations,
+  LocationType,
   municipalities,
   parishes,
   states,
@@ -8,10 +9,42 @@ import {
 import { db } from '~~/server/utils/db';
 
 export default defineEventHandler(async (event) => {
-  // Auth provided by middleware (locations are shared catalog)
-  // No company filtering needed as locations are platform-wide
+  const query = getQuery(event);
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+  const q = String(query.q || '').trim();
+  const type = String(query.type || 'all');
+  const offset = (page - 1) * limit;
 
-  const result = await db
+  // Base conditions
+  const conditions = [];
+
+  if (q) {
+    const searchCondition = or(
+      like(locations.name, `%${q}%`),
+      like(locations.address, `%${q}%`),
+      like(states.name, `%${q}%`),
+    );
+    if (searchCondition) conditions.push(searchCondition);
+  }
+
+  if (type && type !== 'all') {
+    conditions.push(eq(locations.type, type as LocationType));
+  }
+
+  // Get total count
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(locations)
+    .leftJoin(parishes, eq(locations.parishId, parishes.id))
+    .leftJoin(municipalities, eq(parishes.municipalityId, municipalities.id))
+    .leftJoin(states, eq(municipalities.stateId, states.id))
+    .where(and(...conditions));
+
+  const total = Number(totalResult?.count || 0);
+
+  // Get data
+  const data = await db
     .select({
       id: locations.id,
       name: locations.name,
@@ -36,7 +69,15 @@ export default defineEventHandler(async (event) => {
     .leftJoin(parishes, eq(locations.parishId, parishes.id))
     .leftJoin(municipalities, eq(parishes.municipalityId, municipalities.id))
     .leftJoin(states, eq(municipalities.stateId, states.id))
-    .orderBy(asc(locations.name));
+    .where(and(...conditions))
+    .orderBy(asc(locations.name))
+    .limit(limit)
+    .offset(offset);
 
-  return result;
+  return {
+    data,
+    total,
+    page,
+    limit,
+  };
 });

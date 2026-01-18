@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { useForm } from 'vee-validate';
+import { useForm, Field, ErrorMessage } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import { toast } from 'vue-sonner';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 const props = defineProps<{
   open: boolean;
@@ -83,38 +85,44 @@ const onSubmit = handleSubmit(async (values) => {
       </DialogHeader>
 
       <form @submit="onSubmit" class="grid gap-4 py-4">
-        <FormField v-slot="{ componentField }" name="name">
-          <FormItem>
-            <FormLabel>Nombre</FormLabel>
-            <FormControl>
-              <Input v-bind="componentField" placeholder="Mi Empresa C.A." />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <div class="grid gap-2">
+          <Label for="name">Nombre</Label>
+          <Field name="name" v-slot="{ componentField }">
+            <Input
+              id="name"
+              v-bind="componentField"
+              placeholder="Mi Empresa C.A."
+            />
+          </Field>
+          <ErrorMessage name="name" class="text-sm text-destructive" />
+        </div>
 
-        <FormField v-slot="{ componentField }" name="rif">
-          <FormItem>
-            <FormLabel>RIF / NIT</FormLabel>
-            <FormControl>
-              <Input v-bind="componentField" placeholder="J-12345678-9" />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <div class="grid gap-2">
+          <Label for="rif">RIF / NIT</Label>
+          <Field name="rif" v-slot="{ componentField }">
+            <Input
+              id="rif"
+              v-bind="componentField"
+              placeholder="J-12345678-9"
+            />
+          </Field>
+          <ErrorMessage name="rif" class="text-sm text-destructive" />
+        </div>
 
-        <FormField v-slot="{ componentField }" name="logo">
-          <FormItem>
-            <FormLabel>Logo URL</FormLabel>
-            <FormControl>
-              <Input v-bind="componentField" placeholder="https://..." />
-            </FormControl>
-            <FormDescription>
-              Enlace directo a la imagen del logo (opcional).
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <div class="grid gap-2">
+          <Label for="logo">Logo URL</Label>
+          <Field name="logo" v-slot="{ componentField }">
+            <Input
+              id="logo"
+              v-bind="componentField"
+              placeholder="https://..."
+            />
+          </Field>
+          <div class="text-xs text-muted-foreground">
+            Enlace directo a la imagen del logo (opcional).
+          </div>
+          <ErrorMessage name="logo" class="text-sm text-destructive" />
+        </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="emit('close')">

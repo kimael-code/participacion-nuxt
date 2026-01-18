@@ -11,13 +11,16 @@ export interface Event {
 }
 
 export const useEvents = () => {
-  const { data: activeEvent, refresh: refreshActive } = useFetch<Event | null>(
-    '/api/events/active',
-  );
+  const { data: activeEvent, refresh: refreshActive } =
+    useAsyncData<Event | null>('active-event', () =>
+      $fetch('/api/events/active'),
+    );
 
   // List all events for the company (to be implemented in API if not exists)
-  const { data: allEvents, refresh: refreshAll } =
-    useFetch<Event[]>('/api/events');
+  const { data: allEvents, refresh: refreshAll } = useAsyncData<Event[]>(
+    'all-events',
+    () => $fetch('/api/events'),
+  );
 
   const activateEvent = async (eventId: string) => {
     try {

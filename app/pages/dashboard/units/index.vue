@@ -1,62 +1,90 @@
 <script setup lang="ts">
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Building,
-} from 'lucide-vue-next';
+import { ref, computed } from 'vue';
 import { toast } from 'vue-sonner';
-
-// Components
-import UnitDialog from '~/components/units/UnitDialog.vue';
 import { useCompanyStore } from '~/stores/company';
+import { usePermissions } from '~/composables/usePermissions';
+import { createColumns, type Unit } from './partials/columns';
 
 definePageMeta({
   layout: 'dashboard',
 });
 
-interface AdministrativeUnit {
-  id: string;
-  name: string;
-  description?: string;
-  createdAt: string;
-}
-
 const store = useCompanyStore();
 const { selectedCompany } = storeToRefs(store);
-const searchQuery = ref('');
-const showDialog = ref(false);
-const editingUnit = ref<AdministrativeUnit | null>(null);
-const showDeleteDialog = ref(false);
-const unitToDelete = ref<AdministrativeUnit | null>(null);
+const { hasPermission } = usePermissions();
 
-// Fetch units (dependent on selectedCompany)
-// We need to watch selectedCompany because if it changes, units list must update
+// State
+const page = ref(1);
+const perPage = ref(10);
+const searchQuery = ref('');
+const showUnitDialog = ref(false);
+const editingUnit = ref<Unit | null>(null);
+const showDeleteDialog = ref(false);
+const unitToDelete = ref<Unit | null>(null);
+const showBatchDeleteDialog = ref(false);
+const batchDeleteCount = ref(0);
+const batchDeleteIds = ref<string[]>([]);
+const processingRowId = ref<string | null>(null);
+
+// Fetch units with pagination
 const {
-  data: units,
+  data: unitsData,
   pending,
   refresh,
-} = await useFetch<AdministrativeUnit[]>('/api/units', {
-  watch: [() => selectedCompany.value?.id],
+} = await useFetch<{
+  data: Unit[];
+  total: number;
+  page: number;
+  limit: number;
+}>('/api/units', {
+  query: {
+    page,
+    limit: perPage,
+    q: searchQuery,
+  },
+  watch: [page, perPage, searchQuery, () => selectedCompany.value?.id],
 });
 
-// Computed filters
-const filteredUnits = computed(() => {
-  if (!units.value) return [];
-  if (!searchQuery.value) return units.value;
+// Permissions
+const can = computed(() => ({
+  update: hasPermission('units:manage'),
+  delete: hasPermission('units:manage'),
+}));
 
-  const q = searchQuery.value.toLowerCase();
-  return units.value.filter((u) => u.name.toLowerCase().includes(q));
-});
+// Create columns
+const columns = computed(() =>
+  createColumns(can.value, processingRowId, {
+    onUpdate: handleEdit,
+    onDestroy: confirmDelete,
+  }),
+);
 
-const handleEdit = (unit: AdministrativeUnit) => {
-  editingUnit.value = unit;
-  showDialog.value = true;
+// Handlers
+const handleNew = () => {
+  editingUnit.value = null;
+  showUnitDialog.value = true;
 };
 
-const confirmDelete = (unit: AdministrativeUnit) => {
+const handleSearch = (query: string) => {
+  searchQuery.value = query;
+  page.value = 1; // Reset to first page
+};
+
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handlePerPageChange = (newPerPage: number) => {
+  perPage.value = newPerPage;
+  page.value = 1; // Reset to first page
+};
+
+const handleEdit = (unit: Unit) => {
+  editingUnit.value = unit;
+  showUnitDialog.value = true;
+};
+
+const confirmDelete = (unit: Unit) => {
   unitToDelete.value = unit;
   showDeleteDialog.value = true;
 };
@@ -65,11 +93,12 @@ const handleDelete = async () => {
   if (!unitToDelete.value) return;
 
   try {
-    await $fetch(`/api/units/${unitToDelete.value.id}`, { method: 'DELETE' });
-    toast.success('Unidad eliminada');
+    await $fetch<unknown>(`/api/units/${unitToDelete.value.id}`, {
+      method: 'DELETE' as const,
+    });
+    toast.success('Unidad eliminada correctamente');
     refresh();
-  } catch (error) {
-    console.error(error);
+  } catch {
     toast.error('Error al eliminar unidad');
   } finally {
     showDeleteDialog.value = false;
@@ -77,8 +106,38 @@ const handleDelete = async () => {
   }
 };
 
+const confirmBatchDelete = (selectedIds: string[]) => {
+  if (selectedIds.length === 0) return;
+
+  batchDeleteIds.value = selectedIds;
+  batchDeleteCount.value = selectedIds.length;
+  showBatchDeleteDialog.value = true;
+};
+
+const handleBatchDelete = async () => {
+  if (batchDeleteIds.value.length === 0) return;
+
+  try {
+    await Promise.all(
+      batchDeleteIds.value.map((id) =>
+        $fetch<unknown>(`/api/units/${id}`, { method: 'DELETE' as const }),
+      ),
+    );
+    toast.success(
+      `${batchDeleteIds.value.length} unidades eliminadas correctamente`,
+    );
+    refresh();
+  } catch {
+    toast.error('Error al eliminar unidades');
+  } finally {
+    showBatchDeleteDialog.value = false;
+    batchDeleteIds.value = [];
+    batchDeleteCount.value = 0;
+  }
+};
+
 const handleSaved = () => {
-  showDialog.value = false;
+  showUnitDialog.value = false;
   editingUnit.value = null;
   refresh();
 };
@@ -98,104 +157,34 @@ const handleSaved = () => {
           }}</span>
         </p>
       </div>
-      <Button
-        :disabled="!selectedCompany"
-        @click="
-          editingUnit = null;
-          showDialog = true;
-        "
-      >
-        <Plus class="mr-2 h-4 w-4" />
-        Nueva Unidad
-      </Button>
     </div>
 
-    <Card>
-      <CardContent class="p-4">
-        <div class="relative max-w-sm">
-          <Search
-            class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            v-model="searchQuery"
-            placeholder="Buscar unidad..."
-            class="pl-10"
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <!-- DataTable -->
+    <DataTable
+      :columns="columns"
+      :data="unitsData"
+      :loading="pending"
+      :can="{
+        create: hasPermission('units:manage'),
+        delete: hasPermission('units:manage'),
+        export: false,
+      }"
+      search-placeholder="Buscar unidad..."
+      @new="handleNew"
+      @search="handleSearch"
+      @page-change="handlePageChange"
+      @per-page-change="handlePerPageChange"
+      @batch-delete="confirmBatchDelete"
+      @update="handleEdit"
+      @destroy="confirmDelete"
+    />
 
-    <Card>
-      <div class="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Descripción</TableHead>
-              <TableHead class="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-if="!selectedCompany">
-              <TableCell
-                colspan="3"
-                class="h-24 text-center text-muted-foreground"
-              >
-                Seleccione una empresa para ver sus unidades.
-              </TableCell>
-            </TableRow>
-            <TableRow v-else-if="pending && !units">
-              <TableCell colspan="3" class="h-24 text-center"
-                >Cargando...</TableCell
-              >
-            </TableRow>
-            <TableRow v-else-if="!filteredUnits.length">
-              <TableCell
-                colspan="3"
-                class="h-24 text-center text-muted-foreground"
-              >
-                No hay unidades registradas.
-              </TableCell>
-            </TableRow>
-            <TableRow v-for="unit in filteredUnits" :key="unit.id">
-              <TableCell>
-                <div class="flex items-center gap-2">
-                  <Building class="h-4 w-4 text-muted-foreground" />
-                  <span class="font-medium">{{ unit.name }}</span>
-                </div>
-              </TableCell>
-              <TableCell>{{ unit.description || '-' }}</TableCell>
-              <TableCell class="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" class="h-8 w-8 p-0">
-                      <MoreHorizontal class="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem @click="handleEdit(unit)">
-                      <Pencil class="mr-2 h-4 w-4" /> Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="text-destructive"
-                      @click="confirmDelete(unit)"
-                    >
-                      <Trash2 class="mr-2 h-4 w-4" /> Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
-
-    <UnitDialog
-      v-if="showDialog"
-      :open="showDialog"
+    <!-- Unit Dialog -->
+    <UnitsUnitDialog
+      v-if="showUnitDialog"
+      :open="showUnitDialog"
       :unit="editingUnit"
-      @close="showDialog = false"
+      @close="showUnitDialog = false"
       @saved="handleSaved"
     />
 
@@ -217,6 +206,35 @@ const handleSaved = () => {
             @click="handleDelete"
           >
             Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- Batch Delete Confirmation Dialog -->
+    <AlertDialog v-model:open="showBatchDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminarán permanentemente
+            <strong
+              >{{ batchDeleteCount }} unidad{{
+                batchDeleteCount > 1 ? 'es' : ''
+              }}</strong
+            >
+            seleccionadas.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleBatchDelete"
+          >
+            Eliminar {{ batchDeleteCount }} unidad{{
+              batchDeleteCount > 1 ? 'es' : ''
+            }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

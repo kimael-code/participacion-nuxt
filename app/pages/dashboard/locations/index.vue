@@ -1,14 +1,7 @@
 <script setup lang="ts">
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  MapPin,
-  Filter,
-} from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
+import DataTable from '~/components/DataTable.vue';
+import { createColumns, type Location } from './partials/columns';
 
 // Components
 import LocationDialog from '~/components/locations/LocationDialog.vue';
@@ -17,29 +10,35 @@ definePageMeta({
   layout: 'dashboard',
 });
 
-interface Location {
-  id: string;
-  name: string;
-  type: string;
-  address: string;
-  state: { name: string };
-  municipality: { name: string };
-  parish: { name: string };
-}
-
 const searchQuery = ref('');
 const selectedType = ref('all');
+const page = ref(1);
+const perPage = ref(10);
+const processingRowId = ref<string | null>(null);
+
 const showDialog = ref(false);
 const editingLocation = ref<Location | null>(null);
 const showDeleteDialog = ref(false);
 const locationToDelete = ref<Location | null>(null);
 
-// Fetch locations (global catalog)
 const {
-  data: locations,
+  data: locationsData,
   pending,
   refresh,
-} = await useFetch<Location[]>('/api/locations');
+} = await useFetch<{
+  data: Location[];
+  total: number;
+  page: number;
+  limit: number;
+}>('/api/locations', {
+  query: {
+    page,
+    limit: perPage,
+    q: searchQuery,
+    type: selectedType,
+  },
+  watch: [page, perPage, searchQuery, selectedType],
+});
 
 // Location types for filter
 const locationTypes = [
@@ -51,32 +50,6 @@ const locationTypes = [
   { value: 'office', label: 'Oficina' },
   { value: 'other', label: 'Otro' },
 ];
-
-const getTypeLabel = (type: string) => {
-  return locationTypes.find((t) => t.value === type)?.label || type;
-};
-
-// Computed filters
-const filteredLocations = computed(() => {
-  if (!locations.value) return [];
-  let res = locations.value;
-
-  if (selectedType.value !== 'all') {
-    res = res.filter((l) => l.type === selectedType.value);
-  }
-
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
-    res = res.filter(
-      (l) =>
-        l.name.toLowerCase().includes(q) ||
-        l.address.toLowerCase().includes(q) ||
-        l.state?.name.toLowerCase().includes(q),
-    );
-  }
-
-  return res;
-});
 
 const handleEdit = (location: Location) => {
   editingLocation.value = location;
@@ -111,6 +84,77 @@ const handleSaved = () => {
   editingLocation.value = null;
   refresh();
 };
+
+const handleNew = () => {
+  editingLocation.value = null;
+  showDialog.value = true;
+};
+
+const handleSearch = (query: string) => {
+  searchQuery.value = query;
+  page.value = 1;
+};
+
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handlePerPageChange = (newPerPage: number) => {
+  perPage.value = newPerPage;
+  page.value = 1;
+};
+
+const handleClearAdvancedFilters = () => {
+  selectedType.value = 'all';
+};
+
+// Batch Actions
+const showBatchDeleteDialog = ref(false);
+const batchSelection = ref<string[]>([]);
+
+const handleBatchDelete = (ids: string[]) => {
+  batchSelection.value = ids;
+  showBatchDeleteDialog.value = true;
+};
+
+const executeBatchDelete = async () => {
+  try {
+    // Process deletes in parallel
+    await Promise.all(
+      batchSelection.value.map((id) =>
+        $fetch(`/api/locations/${id}`, { method: 'DELETE' }),
+      ),
+    );
+    toast.success(`${batchSelection.value.length} ubicaciones eliminadas`);
+    refresh();
+  } catch (error) {
+    console.error(error);
+    toast.error('Error al eliminar ubicaciones');
+  } finally {
+    showBatchDeleteDialog.value = false;
+    batchSelection.value = [];
+  }
+};
+
+const handleExport = (format: string) => {
+  toast.info(`Exportar a ${format.toUpperCase()} próximamente disponible`);
+};
+
+const can = ref({
+  update: true, // TODO: permissions
+  delete: true, // TODO: permissions
+});
+
+const columns = computed(() =>
+  createColumns(can.value, processingRowId, {
+    onUpdate: handleEdit,
+    onDestroy: confirmDelete,
+  }),
+);
+
+const isAdvancedSearchActive = computed(() => {
+  return selectedType.value !== 'all';
+});
 </script>
 
 <template>
@@ -124,126 +168,49 @@ const handleSaved = () => {
           Centros de votación y sedes operativas.
         </p>
       </div>
-      <Button
-        @click="
-          editingLocation = null;
-          showDialog = true;
-        "
-      >
-        <Plus class="mr-2 h-4 w-4" />
-        Nueva Ubicación
-      </Button>
     </div>
 
-    <Card>
-      <CardContent class="p-4">
-        <div class="flex flex-wrap items-center gap-4">
-          <div class="relative min-w-[300px] flex-1">
-            <Search
-              class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              v-model="searchQuery"
-              placeholder="Buscar por nombre, dirección o estado..."
-              class="pl-10"
-            />
-          </div>
-          <div class="flex items-center gap-2">
-            <Filter class="h-4 w-4 text-muted-foreground" />
-            <Select v-model="selectedType">
-              <SelectTrigger class="w-[200px]">
-                <SelectValue placeholder="Tipo de Ubicación" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los Tipos</SelectItem>
-                <SelectItem
-                  v-for="t in locationTypes"
-                  :key="t.value"
-                  :value="t.value"
-                >
-                  {{ t.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <DataTable
+      :columns="columns"
+      :data="locationsData"
+      :loading="pending"
+      :can="{
+        create: true, // TODO
+        delete: true, // TODO
+        export: true,
+      }"
+      :has-advanced-search="true"
+      :is-advanced-search-active="isAdvancedSearchActive"
+      search-placeholder="Buscar por nombre, dirección..."
+      @new="handleNew"
+      @search="handleSearch"
+      @page-change="handlePageChange"
+      @per-page-change="handlePerPageChange"
+      @clear-advanced-filters="handleClearAdvancedFilters"
+      @export="handleExport"
+      @batch-delete="handleBatchDelete"
+    >
+      <template #advanced-search>
+        <div class="space-y-2">
+          <Label>Tipo de Ubicación</Label>
+          <Select v-model="selectedType">
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los Tipos</SelectItem>
+              <SelectItem
+                v-for="t in locationTypes"
+                :key="t.value"
+                :value="t.value"
+              >
+                {{ t.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <div class="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Ubicación Geográfica</TableHead>
-              <TableHead class="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-if="pending && !locations">
-              <TableCell colspan="4" class="h-24 text-center"
-                >Cargando...</TableCell
-              >
-            </TableRow>
-            <TableRow v-else-if="!filteredLocations.length">
-              <TableCell
-                colspan="4"
-                class="h-24 text-center text-muted-foreground"
-              >
-                No hay ubicaciones registradas.
-              </TableCell>
-            </TableRow>
-            <TableRow v-for="loc in filteredLocations" :key="loc.id">
-              <TableCell>
-                <div class="flex flex-col">
-                  <span class="flex items-center gap-2 font-medium">
-                    <MapPin class="h-4 w-4 text-muted-foreground" />
-                    {{ loc.name }}
-                  </span>
-                  <span
-                    class="ml-6 max-w-[300px] truncate text-xs text-muted-foreground"
-                    >{{ loc.address }}</span
-                  >
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant="secondary">{{ getTypeLabel(loc.type) }}</Badge>
-              </TableCell>
-              <TableCell>
-                <div class="text-sm">
-                  {{ loc.state?.name }} / {{ loc.municipality?.name }}
-                </div>
-                <div class="text-xs text-muted-foreground">
-                  {{ loc.parish?.name }}
-                </div>
-              </TableCell>
-              <TableCell class="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" class="h-8 w-8 p-0">
-                      <MoreHorizontal class="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem @click="handleEdit(loc)">
-                      <Pencil class="mr-2 h-4 w-4" /> Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="text-destructive"
-                      @click="confirmDelete(loc)"
-                    >
-                      <Trash2 class="mr-2 h-4 w-4" /> Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
+      </template>
+    </DataTable>
 
     <LocationDialog
       v-if="showDialog"
@@ -271,6 +238,29 @@ const handleSaved = () => {
             @click="handleDelete"
           >
             Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- Batch Delete Confirmation -->
+    <AlertDialog v-model:open="showBatchDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se eliminarán
+            <strong>{{ batchSelection.length }}</strong> ubicaciones
+            seleccionadas. Esta acción no se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="executeBatchDelete"
+          >
+            Eliminar Selección
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

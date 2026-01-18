@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import {
-  Plus,
-  Search,
-  Filter,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Building2,
-  MapPin,
-} from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { usePermissions } from '~/composables/usePermissions';
 import { useEvents } from '~/composables/useEvents';
+import { createColumns } from './partials/columns';
+import EmployeesAdvancedFilters from './partials/EmployeesAdvancedFilters.vue';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 definePageMeta({
   layout: 'dashboard',
@@ -40,6 +34,9 @@ interface Catalogs {
 const searchQuery = ref('');
 const selectedUnitId = ref('all');
 const page = ref(1);
+const perPage = ref(10);
+const sortBy = ref('');
+const sortOrder = ref<'asc' | 'desc'>('asc');
 
 // Fetch catalogs for filtering and forms
 const { data: catalogs } = useFetch<Catalogs>('/api/employees/catalogs');
@@ -56,8 +53,11 @@ const {
       q: searchQuery.value,
       unitId: selectedUnitId.value !== 'all' ? selectedUnitId.value : undefined,
       page: page.value,
+      limit: perPage.value,
+      sortBy: sortBy.value || undefined,
+      sortOrder: sortOrder.value,
     })),
-    watch: [searchQuery, selectedUnitId, page],
+    watch: [searchQuery, selectedUnitId, page, perPage, sortBy, sortOrder],
   },
 );
 
@@ -65,23 +65,89 @@ const showEmployeeDialog = ref(false);
 const editingEmployee = ref<Employee | null>(null);
 const showDeleteDialog = ref(false);
 const employeeToDelete = ref<Employee | null>(null);
+const showBatchDeleteDialog = ref(false);
+const batchDeleteCount = ref(0);
+const batchDeleteSelectAll = ref(false);
+const batchDeleteIds = ref<string[]>([]);
+const processingRowId = ref<string | null>(null);
+const showAdvancedFilters = ref(false);
+
+const { hasPermission } = usePermissions();
+
+// Permissions for columns
+const can = computed(() => ({
+  update: hasPermission('employees:manage'),
+  delete: hasPermission('employees:manage'),
+  export: true, // Allow export for all who can view
+}));
+
+// Create columns (reactive to sort changes)
+const columns = computed(() =>
+  createColumns(
+    can.value,
+    processingRowId,
+    (column, order) => {
+      if (order === null) {
+        sortBy.value = '';
+        sortOrder.value = 'asc';
+      } else {
+        handleSortChange(column, order);
+      }
+    },
+    {
+      column: sortBy.value,
+      order: sortOrder.value,
+    },
+    {
+      onUpdate: handleEdit,
+      onDestroy: confirmDelete,
+    },
+  ),
+);
+
+// Handlers
+const handleNew = () => {
+  editingEmployee.value = null;
+  showEmployeeDialog.value = true;
+};
+
+const handleSearch = (query: string) => {
+  searchQuery.value = query;
+  page.value = 1; // Reset to first page on search
+};
+
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handlePerPageChange = (newPerPage: number) => {
+  perPage.value = newPerPage;
+  page.value = 1; // Reset to first page when changing per page
+};
+
+const handleSortChange = (column: string, order: 'asc' | 'desc') => {
+  sortBy.value = column;
+  sortOrder.value = order;
+};
 
 const handleEdit = (employee: Employee) => {
   editingEmployee.value = employee;
   showEmployeeDialog.value = true;
+  processingRowId.value = null;
 };
 
 const confirmDelete = (employee: Employee) => {
   employeeToDelete.value = employee;
   showDeleteDialog.value = true;
+  processingRowId.value = null;
 };
 
 const handleDelete = async () => {
   if (!employeeToDelete.value) return;
 
   try {
-    await fetch(`/api/employees/${employeeToDelete.value.id}`, {
-      method: 'DELETE',
+    await $fetch<unknown>(`/api/employees/${employeeToDelete.value.id}`, {
+      method: 'DELETE' as const,
     });
     toast.success('Empleado eliminado correctamente');
     refresh();
@@ -93,13 +159,134 @@ const handleDelete = async () => {
   }
 };
 
+const confirmBatchDelete = (selectedIds: string[], selectAll: boolean) => {
+  if (selectedIds.length === 0) return;
+
+  batchDeleteIds.value = selectedIds;
+  batchDeleteSelectAll.value = selectAll;
+
+  if (selectAll) {
+    batchDeleteCount.value = totalRecords.value;
+  } else {
+    batchDeleteCount.value = selectedIds.length;
+  }
+
+  showBatchDeleteDialog.value = true;
+};
+
+const handleBatchDelete = async () => {
+  if (batchDeleteIds.value.length === 0) return;
+
+  try {
+    if (batchDeleteSelectAll.value) {
+      // Delete all records matching current filters
+      const { data: allEmployees } = await $fetch<{ data: Employee[] }>(
+        '/api/employees',
+        {
+          query: {
+            q: searchQuery.value,
+            unitId:
+              selectedUnitId.value !== 'all' ? selectedUnitId.value : undefined,
+            limit: 1000, // Get all matching records
+          },
+        },
+      );
+
+      await Promise.all(
+        (allEmployees || []).map((employee) =>
+          $fetch<unknown>(`/api/employees/${employee.id}`, {
+            method: 'DELETE' as const,
+          }),
+        ),
+      );
+      toast.success(
+        `${allEmployees?.length || 0} empleados eliminados correctamente`,
+      );
+    } else {
+      await Promise.all(
+        batchDeleteIds.value.map((id) =>
+          $fetch<unknown>(`/api/employees/${id}`, {
+            method: 'DELETE' as const,
+          }),
+        ),
+      );
+      toast.success(
+        `${batchDeleteIds.value.length} empleados eliminados correctamente`,
+      );
+    }
+    refresh();
+  } catch {
+    toast.error('Error al eliminar empleados');
+  } finally {
+    showBatchDeleteDialog.value = false;
+    batchDeleteIds.value = [];
+    batchDeleteCount.value = 0;
+    batchDeleteSelectAll.value = false;
+  }
+};
+
+const handleApplyAdvancedFilters = (filters: { unitId?: string }) => {
+  selectedUnitId.value = filters.unitId || 'all';
+  showAdvancedFilters.value = false;
+  page.value = 1; // Reset to first page
+};
+
+const handleClearAdvancedFilters = () => {
+  selectedUnitId.value = 'all';
+  showAdvancedFilters.value = false;
+  page.value = 1;
+};
+
+const advancedFiltersActive = computed(() => selectedUnitId.value !== 'all');
+
 const handleSaved = () => {
   showEmployeeDialog.value = false;
   editingEmployee.value = null;
   refresh();
 };
 
-const { hasPermission } = usePermissions();
+const handleExport = async (format: 'pdf' | 'excel' | 'json') => {
+  if (format === 'pdf') {
+    toast.info('Generando PDF...');
+    try {
+      const doc = new jsPDF();
+
+      const { data: exportData } = await $fetch<{ data: Employee[] }>(
+        '/api/employees',
+        {
+          query: {
+            q: searchQuery.value,
+            unitId:
+              selectedUnitId.value !== 'all' ? selectedUnitId.value : undefined,
+            limit: 1000,
+            sortBy: sortBy.value || undefined,
+            sortOrder: sortOrder.value,
+          },
+        },
+      );
+
+      autoTable(doc, {
+        head: [['#', 'Nombre', 'Apellido', 'Cédula', 'Email', 'Unidad']],
+        body: (exportData || []).map((emp, index) => [
+          index + 1,
+          emp.firstName,
+          emp.lastName,
+          emp.cedula,
+          emp.email || '',
+          emp.administrativeUnit?.name || '',
+        ]),
+      });
+
+      doc.save('empleados.pdf');
+      toast.success('PDF exportado exitosamente');
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al generar PDF');
+    }
+  } else {
+    toast.info(`Exportación a ${format.toUpperCase()} no implementada aún`);
+  }
+};
 </script>
 
 <template>
@@ -111,183 +298,33 @@ const { hasPermission } = usePermissions();
           Administre la nómina de su empresa y asigne centros de votación.
         </p>
       </div>
-      <div class="flex items-center gap-2">
-        <Button
-          v-if="hasPermission('employees:manage')"
-          @click="
-            editingEmployee = null;
-            showEmployeeDialog = true;
-          "
-        >
-          <Plus class="mr-2 h-4 w-4" />
-          Nuevo Empleado
-        </Button>
-      </div>
     </div>
 
-    <!-- Filters -->
-    <Card>
-      <CardContent class="p-4">
-        <div class="flex flex-wrap items-center gap-4">
-          <div class="relative min-w-[300px] flex-1">
-            <Search
-              class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              v-model="searchQuery"
-              placeholder="Buscar por cédula o nombre..."
-              class="pl-10"
-            />
-          </div>
-          <div class="flex items-center gap-2">
-            <Filter class="h-4 w-4 text-muted-foreground" />
-            <Select v-model="selectedUnitId">
-              <SelectTrigger class="w-[200px]">
-                <SelectValue placeholder="Unidad Administrativa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las Unidades</SelectItem>
-                <SelectItem
-                  v-for="unit in catalogs?.units || []"
-                  :key="unit.id"
-                  :value="unit.id"
-                >
-                  {{ unit.name }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <!-- Table -->
-    <Card>
-      <div class="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Empleado</TableHead>
-              <TableHead>Cédula</TableHead>
-              <TableHead>Unidad / Localización</TableHead>
-              <TableHead class="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-if="pending && !employeesData">
-              <TableCell colspan="4" class="h-24 text-center"
-                >Cargando...</TableCell
-              >
-            </TableRow>
-            <TableRow v-else-if="!employeesData?.data?.length">
-              <TableCell
-                colspan="4"
-                class="h-24 text-center text-muted-foreground"
-              >
-                No se encontraron empleados.
-              </TableCell>
-            </TableRow>
-            <TableRow
-              v-for="employee in employeesData?.data || []"
-              :key="employee.id"
-            >
-              <TableCell>
-                <div class="flex flex-col">
-                  <span class="font-medium text-foreground"
-                    >{{ employee.firstName }} {{ employee.lastName }}</span
-                  >
-                  <span class="text-xs text-muted-foreground">{{
-                    employee.email || 'Sin correo'
-                  }}</span>
-                </div>
-              </TableCell>
-              <TableCell>{{ employee.cedula }}</TableCell>
-              <TableCell>
-                <div class="flex flex-col gap-1">
-                  <div class="flex items-center text-xs text-muted-foreground">
-                    <Building2 class="mr-1 h-3 w-3" />
-                    {{ employee.administrativeUnit?.name || 'N/A' }}
-                  </div>
-                  <div class="flex items-center text-xs text-muted-foreground">
-                    <MapPin class="mr-1 h-3 w-3" />
-                    {{ employee.location?.name || 'N/A' }}
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell class="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" class="h-8 w-8 p-0">
-                      <MoreHorizontal class="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      v-if="hasPermission('employees:manage')"
-                      @click="handleEdit(employee)"
-                    >
-                      <Pencil class="mr-2 h-4 w-4" /> Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      v-if="hasPermission('employees:manage')"
-                      class="text-destructive"
-                      @click="confirmDelete(employee)"
-                    >
-                      <Trash2 class="mr-2 h-4 w-4" /> Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
-
-    <!-- Pagination -->
-    <div
-      v-if="employeesData?.total && employeesData.total > employeesData.limit"
-      class="flex items-center justify-between px-2"
-    >
-      <div class="text-sm text-muted-foreground">
-        Mostrando {{ employeesData.data.length }} de
-        {{ employeesData.total }} empleados
-      </div>
-      <Pagination
-        v-slot="{ page: p }"
-        :total="employeesData.total"
-        :sibling-count="1"
-        :show-edges="true"
-        :items-per-page="employeesData.limit"
-        :page="page"
-        @update:page="(v) => (page = v)"
-      >
-        <PaginationContent v-slot="{ items }" class="flex items-center gap-1">
-          <PaginationFirst />
-          <PaginationPrevious />
-
-          <template v-for="(item, index) in items">
-            <PaginationItem
-              v-if="item.type === 'page'"
-              :key="index"
-              :value="item.value"
-              as-child
-            >
-              <Button
-                class="h-10 w-10 p-0"
-                :variant="item.value === p ? 'default' : 'outline'"
-              >
-                {{ item.value }}
-              </Button>
-            </PaginationItem>
-            <PaginationEllipsis v-else :key="item.type" :index="index" />
-          </template>
-
-          <PaginationNext />
-          <PaginationLast />
-        </PaginationContent>
-      </Pagination>
-    </div>
+    <!-- DataTable -->
+    <DataTable
+      :columns="columns"
+      :data="employeesData"
+      :loading="pending"
+      :can="{
+        create: hasPermission('employees:manage'),
+        delete: hasPermission('employees:manage'),
+        export: hasPermission('employees:manage'),
+      }"
+      :has-advanced-search="true"
+      :is-advanced-search-active="advancedFiltersActive"
+      search-placeholder="Buscar por cédula o nombre..."
+      @new="handleNew"
+      @search="handleSearch"
+      @page-change="handlePageChange"
+      @per-page-change="handlePerPageChange"
+      @sort-change="handleSortChange"
+      @batch-delete="confirmBatchDelete"
+      @export="handleExport"
+      @advanced-search="showAdvancedFilters = true"
+      @clear-advanced-filters="handleClearAdvancedFilters"
+      @update="handleEdit"
+      @destroy="confirmDelete"
+    />
 
     <!-- Dialogs -->
     <EmployeesEmployeeDialog
@@ -325,5 +362,48 @@ const { hasPermission } = usePermissions();
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- Batch Delete Confirmation Dialog -->
+    <AlertDialog v-model:open="showBatchDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. Se eliminarán permanentemente
+            <strong
+              >{{ batchDeleteCount }} empleado{{
+                batchDeleteCount > 1 ? 's' : ''
+              }}</strong
+            >
+            {{
+              batchDeleteSelectAll
+                ? 'que coinciden con los filtros actuales'
+                : 'seleccionados'
+            }}.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleBatchDelete"
+          >
+            Eliminar {{ batchDeleteCount }} empleado{{
+              batchDeleteCount > 1 ? 's' : ''
+            }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- Advanced Filters Sheet -->
+    <EmployeesAdvancedFilters
+      :open="showAdvancedFilters"
+      :units="catalogs?.units || []"
+      :initial-unit-id="selectedUnitId !== 'all' ? selectedUnitId : undefined"
+      @close="showAdvancedFilters = false"
+      @apply="handleApplyAdvancedFilters"
+      @clear="handleClearAdvancedFilters"
+    />
   </div>
 </template>

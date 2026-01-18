@@ -3,8 +3,9 @@ import { authClient } from '~/utils/auth-client';
 export const usePermissions = () => {
   const sessionData = authClient.useSession();
 
-  const { data: userPermissions, refresh } = useFetch<any>(
-    '/api/auth/permissions',
+  const { data: userPermissions, refresh } = useAsyncData<any>(
+    'user-permissions',
+    () => $fetch('/api/auth/permissions'),
     {
       immediate: !!sessionData.value?.data,
       watch: [() => sessionData.value?.data],

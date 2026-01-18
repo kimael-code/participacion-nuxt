@@ -1,36 +1,24 @@
 <script setup lang="ts">
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Calendar,
-  CheckCircle2,
-  XCircle,
-} from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
+import { useCompanyStore } from '~/stores/company';
+import DataTable from '~/components/DataTable.vue';
+import { createColumns, type Event } from './partials/columns';
 
 // Components
 import EventDialog from '~/components/events/EventDialog.vue';
-import { useCompanyStore } from '~/stores/company';
 
 definePageMeta({
   layout: 'dashboard',
 });
 
-interface Event {
-  id: string;
-  name: string;
-  date: string;
-  active: boolean;
-  description?: string;
-  companyId: string;
-}
-
 const store = useCompanyStore();
 const { selectedCompany } = storeToRefs(store);
+
 const searchQuery = ref('');
+const page = ref(1);
+const perPage = ref(10);
+const processingRowId = ref<string | null>(null);
+
 const showDialog = ref(false);
 const editingEvent = ref<Event | null>(null);
 const showDeleteDialog = ref(false);
@@ -38,21 +26,22 @@ const eventToDelete = ref<Event | null>(null);
 
 // Fetch events (dependent on selectedCompany)
 const {
-  data: events,
+  data: eventsData,
   pending,
   refresh,
-} = await useFetch<Event[]>('/api/events', {
+} = await useFetch<{
+  data: Event[];
+  total: number;
+  page: number;
+  limit: number;
+}>('/api/events', {
   key: `events-${selectedCompany.value?.id}`,
-  watch: [() => selectedCompany.value?.id],
-});
-
-// Computed filters
-const filteredEvents = computed(() => {
-  if (!events.value) return [];
-  if (!searchQuery.value) return events.value;
-
-  const q = searchQuery.value.toLowerCase();
-  return events.value.filter((e) => e.name.toLowerCase().includes(q));
+  query: {
+    page,
+    limit: perPage,
+    q: searchQuery,
+  },
+  watch: [() => selectedCompany.value?.id, page, perPage, searchQuery],
 });
 
 const handleEdit = (event: Event) => {
@@ -82,6 +71,7 @@ const handleDelete = async () => {
 };
 
 const handleActivate = async (event: Event) => {
+  processingRowId.value = event.id;
   try {
     await $fetch('/api/events/activate', {
       method: 'POST',
@@ -92,10 +82,13 @@ const handleActivate = async (event: Event) => {
   } catch (error: any) {
     console.error(error);
     toast.error('Error al activar evento');
+  } finally {
+    processingRowId.value = null;
   }
 };
 
 const handleDeactivate = async (event: Event) => {
+  processingRowId.value = event.id;
   try {
     await $fetch('/api/events/deactivate', {
       method: 'POST',
@@ -106,6 +99,8 @@ const handleDeactivate = async (event: Event) => {
   } catch (error: any) {
     console.error(error);
     toast.error('Error al desactivar evento');
+  } finally {
+    processingRowId.value = null;
   }
 };
 
@@ -114,6 +109,39 @@ const handleSaved = () => {
   editingEvent.value = null;
   refresh();
 };
+
+const handleNew = () => {
+  editingEvent.value = null;
+  showDialog.value = true;
+};
+
+const handleSearch = (query: string) => {
+  searchQuery.value = query;
+  page.value = 1;
+};
+
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handlePerPageChange = (newPerPage: number) => {
+  perPage.value = newPerPage;
+  page.value = 1;
+};
+
+const can = ref({
+  update: true, // TODO: permissions
+  delete: true, // TODO: permissions
+});
+
+const columns = computed(() =>
+  createColumns(can.value, processingRowId, {
+    onUpdate: handleEdit,
+    onDestroy: confirmDelete,
+    onActivate: handleActivate,
+    onDeactivate: handleDeactivate,
+  }),
+);
 </script>
 
 <template>
@@ -128,129 +156,28 @@ const handleSaved = () => {
           }}</span>
         </p>
       </div>
-      <Button
-        :disabled="!selectedCompany"
-        @click="
-          editingEvent = null;
-          showDialog = true;
-        "
-      >
-        <Plus class="mr-2 h-4 w-4" />
-        Nuevo Evento
-      </Button>
     </div>
 
-    <!-- Filters -->
-    <Card>
-      <CardContent class="p-4">
-        <div class="relative max-w-sm">
-          <Search
-            class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            v-model="searchQuery"
-            placeholder="Buscar evento..."
-            class="pl-10"
-          />
-        </div>
-      </CardContent>
-    </Card>
+    <div v-if="!selectedCompany" class="p-8 text-center text-muted-foreground">
+      Seleccione una empresa para ver sus eventos.
+    </div>
 
-    <!-- Table -->
-    <Card>
-      <div class="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead class="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-if="!selectedCompany">
-              <TableCell
-                colspan="4"
-                class="h-24 text-center text-muted-foreground"
-              >
-                Seleccione una empresa para ver sus eventos.
-              </TableCell>
-            </TableRow>
-            <TableRow v-else-if="pending && !events">
-              <TableCell colspan="4" class="h-24 text-center"
-                >Cargando...</TableCell
-              >
-            </TableRow>
-            <TableRow v-else-if="!filteredEvents.length">
-              <TableCell
-                colspan="4"
-                class="h-24 text-center text-muted-foreground"
-              >
-                No hay eventos registrados.
-              </TableCell>
-            </TableRow>
-            <TableRow v-for="event in filteredEvents" :key="event.id">
-              <TableCell>
-                <div class="flex flex-col">
-                  <span class="font-medium">{{ event.name }}</span>
-                  <span class="text-xs text-muted-foreground">{{
-                    event.description
-                  }}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div class="flex items-center gap-2">
-                  <Calendar class="h-4 w-4 text-muted-foreground" />
-                  {{ new Date(event.date).toLocaleDateString() }}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  v-if="event.active"
-                  variant="outline"
-                  class="border-green-200 bg-green-100 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
-                >
-                  Activo
-                </Badge>
-                <Badge v-else variant="outline"> Inactivo </Badge>
-              </TableCell>
-              <TableCell class="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" class="h-8 w-8 p-0">
-                      <MoreHorizontal class="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      v-if="!event.active"
-                      @click="handleActivate(event)"
-                    >
-                      <CheckCircle2 class="mr-2 h-4 w-4 text-green-600" />
-                      Activar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem v-else @click="handleDeactivate(event)">
-                      <XCircle class="mr-2 h-4 w-4 text-red-600" />
-                      Desactivar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem @click="handleEdit(event)">
-                      <Pencil class="mr-2 h-4 w-4" /> Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="text-destructive"
-                      @click="confirmDelete(event)"
-                    >
-                      <Trash2 class="mr-2 h-4 w-4" /> Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
+    <DataTable
+      v-else
+      :columns="columns"
+      :data="eventsData"
+      :loading="pending"
+      :can="{
+        create: true, // TODO
+        delete: true, // TODO
+        export: true,
+      }"
+      search-placeholder="Buscar evento..."
+      @new="handleNew"
+      @search="handleSearch"
+      @page-change="handlePageChange"
+      @per-page-change="handlePerPageChange"
+    />
 
     <EventDialog
       v-if="showDialog"

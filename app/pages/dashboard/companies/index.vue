@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Building2,
-} from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
+import { useCompanyStore } from '~/stores/company';
+import DataTable from '~/components/DataTable.vue';
+import { createColumns, type Company } from './partials/columns';
 
 // Components
 import CompanyDialog from '~/components/companies/CompanyDialog.vue';
@@ -16,37 +11,37 @@ definePageMeta({
   layout: 'dashboard',
 });
 
-interface Company {
-  id: string;
-  name: string;
-  rif?: string;
-  logo?: string;
-  createdAt: string;
-}
-
 const searchQuery = ref('');
+const page = ref(1);
+const perPage = ref(10);
+const processingRowId = ref<string | null>(null);
+
 const showDialog = ref(false);
 const editingCompany = ref<Company | null>(null);
 const showDeleteDialog = ref(false);
 const companyToDelete = ref<Company | null>(null);
 
-// Fetch companies (reusing the same API as for the switcher context)
-// But here we want to manage them.
+// Batch Actions
+const showBatchDeleteDialog = ref(false);
+const batchSelection = ref<string[]>([]);
+
+// Data Fetching
 const {
-  data: companies,
+  data: companiesData,
   pending,
   refresh,
-} = await useFetch<Company[]>('/api/companies');
-
-// Computed filters
-const filteredCompanies = computed(() => {
-  if (!companies.value) return [];
-  if (!searchQuery.value) return companies.value;
-
-  const q = searchQuery.value.toLowerCase();
-  return companies.value.filter(
-    (c) => c.name.toLowerCase().includes(q) || c.rif?.toLowerCase().includes(q),
-  );
+} = await useFetch<{
+  data: Company[];
+  total: number;
+  page: number;
+  limit: number;
+}>('/api/companies', {
+  query: {
+    page,
+    limit: perPage,
+    q: searchQuery,
+  },
+  watch: [page, perPage, searchQuery],
 });
 
 const handleEdit = (company: Company) => {
@@ -59,6 +54,12 @@ const confirmDelete = (company: Company) => {
   showDeleteDialog.value = true;
 };
 
+const updateGlobalContext = () => {
+  const store = useCompanyStore();
+  const { fetchUserCompanies } = store;
+  fetchUserCompanies();
+};
+
 const handleDelete = async () => {
   if (!companyToDelete.value) return;
 
@@ -68,10 +69,7 @@ const handleDelete = async () => {
     });
     toast.success('Empresa eliminada correctamente');
     refresh();
-    // Also refresh context
-    const store = useCompanyStore();
-    const { fetchUserCompanies } = store;
-    fetchUserCompanies();
+    updateGlobalContext();
   } catch (error) {
     console.error(error);
     toast.error('Error al eliminar empresa');
@@ -85,12 +83,67 @@ const handleSaved = () => {
   showDialog.value = false;
   editingCompany.value = null;
   refresh();
-  // Also update global context
-  // Also update global context
-  const store = useCompanyStore();
-  const { fetchUserCompanies } = store;
-  fetchUserCompanies();
+  updateGlobalContext();
 };
+
+const handleNew = () => {
+  editingCompany.value = null;
+  showDialog.value = true;
+};
+
+const handleSearch = (query: string) => {
+  searchQuery.value = query;
+  page.value = 1;
+};
+
+const handlePageChange = (newPage: number) => {
+  page.value = newPage;
+};
+
+const handlePerPageChange = (newPerPage: number) => {
+  perPage.value = newPerPage;
+  page.value = 1;
+};
+
+const handleExport = (format: string) => {
+  toast.info(`Exportar a ${format.toUpperCase()} próximamente disponible`);
+};
+
+const handleBatchDelete = (ids: string[]) => {
+  batchSelection.value = ids;
+  showBatchDeleteDialog.value = true;
+};
+
+const executeBatchDelete = async () => {
+  try {
+    await Promise.all(
+      batchSelection.value.map((id) =>
+        $fetch(`/api/companies/${id}`, { method: 'DELETE' }),
+      ),
+    );
+    toast.success(`${batchSelection.value.length} empresas eliminadas`);
+    refresh();
+    updateGlobalContext();
+  } catch (error) {
+    console.error(error);
+    toast.error('Error al eliminar empresas');
+  } finally {
+    showBatchDeleteDialog.value = false;
+    batchSelection.value = [];
+  }
+};
+
+const can = ref({
+  update: true, // TODO: permissions
+  delete: true, // TODO: permissions
+});
+
+const columns = computed(() =>
+  createColumns(can.value, processingRowId, {
+    onUpdate: handleEdit,
+    onDestroy: confirmDelete,
+  }),
+);
 </script>
 
 <template>
@@ -102,105 +155,25 @@ const handleSaved = () => {
           Cree y administre las empresas registradas en la plataforma.
         </p>
       </div>
-      <Button
-        @click="
-          editingCompany = null;
-          showDialog = true;
-        "
-      >
-        <Plus class="mr-2 h-4 w-4" />
-        Nueva Empresa
-      </Button>
     </div>
 
-    <!-- Filters -->
-    <Card>
-      <CardContent class="p-4">
-        <div class="relative max-w-sm">
-          <Search
-            class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            v-model="searchQuery"
-            placeholder="Buscar por nombre o RIF..."
-            class="pl-10"
-          />
-        </div>
-      </CardContent>
-    </Card>
-
-    <!-- Table -->
-    <Card>
-      <div class="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Empresa</TableHead>
-              <TableHead>RIF</TableHead>
-              <TableHead>Fecha Creación</TableHead>
-              <TableHead class="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-if="pending && !companies">
-              <TableCell colspan="4" class="h-24 text-center"
-                >Cargando...</TableCell
-              >
-            </TableRow>
-            <TableRow v-else-if="!filteredCompanies.length">
-              <TableCell
-                colspan="4"
-                class="h-24 text-center text-muted-foreground"
-              >
-                No se encontraron empresas.
-              </TableCell>
-            </TableRow>
-            <TableRow v-for="company in filteredCompanies" :key="company.id">
-              <TableCell>
-                <div class="flex items-center gap-3">
-                  <div
-                    class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted"
-                  >
-                    <img
-                      v-if="company.logo"
-                      :src="company.logo"
-                      :alt="company.name"
-                      class="h-full w-full rounded-lg object-cover"
-                    />
-                    <Building2 v-else class="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <span class="font-medium">{{ company.name }}</span>
-                </div>
-              </TableCell>
-              <TableCell>{{ company.rif || 'N/A' }}</TableCell>
-              <TableCell>
-                {{ new Date(company.createdAt).toLocaleDateString() }}
-              </TableCell>
-              <TableCell class="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" class="h-8 w-8 p-0">
-                      <MoreHorizontal class="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem @click="handleEdit(company)">
-                      <Pencil class="mr-2 h-4 w-4" /> Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="text-destructive"
-                      @click="confirmDelete(company)"
-                    >
-                      <Trash2 class="mr-2 h-4 w-4" /> Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
+    <DataTable
+      :columns="columns"
+      :data="companiesData"
+      :loading="pending"
+      :can="{
+        create: true, // TODO
+        delete: true, // TODO
+        export: true,
+      }"
+      search-placeholder="Buscar por nombre o RIF..."
+      @new="handleNew"
+      @search="handleSearch"
+      @page-change="handlePageChange"
+      @per-page-change="handlePerPageChange"
+      @export="handleExport"
+      @batch-delete="handleBatchDelete"
+    />
 
     <CompanyDialog
       v-if="showDialog"
@@ -228,6 +201,28 @@ const handleSaved = () => {
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- Batch Delete Confirmation -->
+    <AlertDialog v-model:open="showBatchDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se eliminarán <strong>{{ batchSelection.length }}</strong> empresas
+            seleccionadas. Esta acción no se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="executeBatchDelete"
+          >
+            Eliminar Selección
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

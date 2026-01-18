@@ -1,4 +1,4 @@
-import { and, asc, count, eq, like, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, like, or } from 'drizzle-orm';
 import { employees } from '~~/server/database/schema';
 import { db } from '~~/server/utils/db';
 
@@ -11,6 +11,8 @@ export default defineEventHandler(async (event) => {
   const unitId = query.unitId as string;
   const page = parseInt(query.page as string) || 1;
   const limit = parseInt(query.limit as string) || 20;
+  const sortBy = query.sortBy as string;
+  const sortOrder = query.sortOrder as string;
   const offset = (page - 1) * limit;
 
   const filters = [eq(employees.companyId, companyId)];
@@ -30,6 +32,19 @@ export default defineEventHandler(async (event) => {
 
   const whereClause = filters.length > 1 ? and(...filters) : filters[0];
 
+  // Sorting logic
+  let orderBy: any[] = [asc(employees.lastName), asc(employees.firstName)]; // Default sort
+
+  if (sortBy) {
+    const direction = sortOrder === 'desc' ? desc : asc;
+    if (sortBy === 'name' || sortBy === 'firstName') {
+      orderBy = [direction(employees.firstName), direction(employees.lastName)];
+    } else if (sortBy === 'cedula') {
+      orderBy = [direction(employees.cedula)];
+    }
+    // Add more cases as needed
+  }
+
   const [results, totalResult] = await Promise.all([
     db.query.employees.findMany({
       where: whereClause,
@@ -39,7 +54,7 @@ export default defineEventHandler(async (event) => {
       },
       limit,
       offset,
-      orderBy: [asc(employees.lastName), asc(employees.firstName)],
+      orderBy: orderBy,
     }),
     db
       .select({ count: count() })
