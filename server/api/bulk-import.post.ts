@@ -10,6 +10,7 @@ import {
   parishes,
   states,
 } from '../database/schema';
+import { validateCsvRow, type CsvRow } from '../utils/csv-validator';
 import { db } from '../utils/db';
 
 export default defineEventHandler(async (event) => {
@@ -66,17 +67,9 @@ export default defineEventHandler(async (event) => {
   for (const row of parsed.data as any[]) {
     try {
       // Validar datos mínimos
-      if (
-        !row.cedula ||
-        !row.firstName ||
-        !row.lastName ||
-        !row.administrativeUnit ||
-        !row.locationName ||
-        !row.state ||
-        !row.municipality ||
-        !row.parish
-      ) {
-        throw new Error('Faltan campos requeridos');
+      const validationError = validateCsvRow(row as CsvRow);
+      if (validationError) {
+        throw new Error(validationError);
       }
 
       // 1. Buscar o crear estado

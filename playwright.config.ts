@@ -11,6 +11,9 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
   },
+  // Ensure we run in development mode for auth providers
+  // And mock env vars for checking
+  globalSetup: './tests/e2e/global-setup.ts',
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
