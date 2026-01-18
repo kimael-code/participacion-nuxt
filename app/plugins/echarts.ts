@@ -7,6 +7,7 @@ import {
   TooltipComponent,
 } from 'echarts/components';
 import { use } from 'echarts/core';
+import { LabelLayout, UniversalTransition } from 'echarts/features';
 import { CanvasRenderer } from 'echarts/renderers';
 import VChart, { THEME_KEY } from 'vue-echarts';
 
@@ -20,6 +21,8 @@ export default defineNuxtPlugin((nuxtApp) => {
     LegendComponent,
     TitleComponent,
     DatasetComponent,
+    LabelLayout,
+    UniversalTransition,
   ]);
 
   nuxtApp.vueApp.component('VChart', VChart);

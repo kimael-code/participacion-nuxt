@@ -1,3 +1,5 @@
+import { authClient } from '~/utils/auth-client';
+
 export interface Event {
   id: string;
   name: string;
@@ -11,15 +13,31 @@ export interface Event {
 }
 
 export const useEvents = () => {
-  const { data: activeEvent, refresh: refreshActive } =
-    useAsyncData<Event | null>('active-event', () =>
-      $fetch('/api/events/active'),
-    );
+  const sessionData = authClient.useSession();
 
-  // List all events for the company (to be implemented in API if not exists)
+  const { data: activeEvents, refresh: refreshActive } = useAsyncData<Event[]>(
+    'active-events',
+    () => $fetch('/api/events/active'),
+    {
+      watch: [() => sessionData.value?.data],
+    },
+  );
+
+  // Computed helper for single active event (first one found)
+  const activeEvent = computed(() => {
+    if (activeEvents.value && activeEvents.value.length > 0) {
+      return activeEvents.value[0];
+    }
+    return null;
+  });
+
+  // List all events for the company
   const { data: allEvents, refresh: refreshAll } = useAsyncData<Event[]>(
     'all-events',
     () => $fetch('/api/events'),
+    {
+      watch: [() => sessionData.value?.data],
+    },
   );
 
   const activateEvent = async (eventId: string) => {
@@ -37,6 +55,7 @@ export const useEvents = () => {
   };
 
   return {
+    activeEvents,
     activeEvent,
     allEvents,
     refreshActive,

@@ -12,6 +12,13 @@ const props = defineProps<{
   stats: ParticipationStats | null | undefined;
 }>();
 
+const isMounted = ref(false);
+onMounted(() => {
+  setTimeout(() => {
+    isMounted.value = true;
+  }, 100);
+});
+
 const colorMode = useColorMode();
 
 const chartOptions = computed(() => {
@@ -41,7 +48,8 @@ const chartOptions = computed(() => {
       {
         name: 'Participación',
         type: 'pie',
-        radius: ['50%', '80%'],
+        radius: ['45%', '70%'], // Reduced to avoid overlap with legend
+        center: ['50%', '45%'], // Shifted up slightly
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 8,
@@ -89,13 +97,13 @@ const chartOptions = computed(() => {
 <template>
   <div class="h-full w-full">
     <VChart
-      v-if="props.stats"
+      v-if="isMounted && props.stats"
       class="h-full w-full"
       :option="chartOptions"
       autoresize
     />
     <div
-      v-else
+      v-else-if="!props.stats"
       class="flex h-full items-center justify-center text-muted-foreground"
     >
       Esperando datos...

@@ -4,9 +4,9 @@
 
 <template>
   <div
-    class="min-h-screen bg-background text-foreground transition-colors duration-300"
+    class="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground transition-colors duration-300"
   >
-    <main class="h-full w-full p-4 md:p-8">
+    <main class="flex-1 p-4 md:p-8">
       <slot />
     </main>
   </div>

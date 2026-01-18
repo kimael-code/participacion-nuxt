@@ -127,7 +127,7 @@ const formatPercentage = (value: number) => {
     <!-- Main Content Area -->
     <div v-if="stats" class="grid flex-1 gap-6 lg:grid-cols-2">
       <!-- Left Column: Summary & Main Chart -->
-      <div class="flex flex-col gap-6">
+      <div class="flex h-full flex-col gap-6">
         <!-- Title & Time -->
         <div class="text-center lg:text-left">
           <h2
@@ -195,7 +195,7 @@ const formatPercentage = (value: number) => {
               <p
                 class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
               >
-                Faltantes
+                No Participaron
               </p>
               <p class="text-3xl font-bold text-red-600 md:text-4xl">
                 {{ stats.overall.notParticipated }}
@@ -220,7 +220,7 @@ const formatPercentage = (value: number) => {
       </div>
 
       <!-- Right Column: Detailed Charts -->
-      <div class="flex flex-col gap-6">
+      <div class="flex h-full flex-col gap-6">
         <div
           class="flex h-full flex-col rounded-2xl bg-card/50 p-4 shadow-sm ring-1 ring-border/50"
         >

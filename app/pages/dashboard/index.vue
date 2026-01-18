@@ -7,21 +7,27 @@ definePageMeta({
   title: 'Dashboard',
 });
 
-const { activeEvent, allEvents, activateEvent } = useEvents();
+const { activeEvents, allEvents, activateEvent } = useEvents();
+const { hasPermission } = usePermissions();
 
 // Selected event for the dashboard
 const selectedEventId = ref<string | null>(null);
 
-// Automatically select the active event when loaded
+// Automatically select the active event if there is exactly one
 watch(
-  activeEvent,
-  (newActive) => {
-    if (newActive && !selectedEventId.value) {
-      selectedEventId.value = newActive.id;
+  activeEvents,
+  (events) => {
+    if (events && events.length === 1 && !selectedEventId.value) {
+      selectedEventId.value = events[0].id;
     }
   },
   { immediate: true },
 );
+
+// Computed for single active event display
+const singleActiveEvent = computed(() => {
+  return activeEvents.value?.length === 1 ? activeEvents.value[0] : null;
+});
 
 // Connect to SSE for real-time stats
 const { stats, error } = useDashboardStats(selectedEventId);
@@ -49,12 +55,15 @@ const formatPercentage = (value: number) => {
 
 <template>
   <div class="flex flex-col gap-6">
-    <!-- Event Selector - Prominent -->
-    <Card class="border-primary/20 bg-linear-to-r from-primary/5 to-primary/10">
+    <!-- Event Selector / Active Event Display -->
+    <Card
+      class="border-primary/20 bg-linear-to-r from-primary/5 to-primary/10 transition-all duration-500"
+    >
       <CardContent class="p-6">
         <div
           class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
         >
+          <!-- Left Side: Event Info -->
           <div class="flex items-center gap-4">
             <div
               class="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 ring-4 ring-primary/5"
@@ -63,50 +72,141 @@ const formatPercentage = (value: number) => {
             </div>
             <div>
               <p class="text-sm font-medium text-muted-foreground">
-                Evento Activo
-              </p>
-              <h3 class="text-xl font-bold">
-                {{ activeEvent?.name || 'Sin evento activo' }}
-              </h3>
-              <p v-if="activeEvent" class="text-sm text-muted-foreground">
                 {{
-                  new Date(activeEvent.eventDate).toLocaleDateString('es-VE', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })
+                  singleActiveEvent
+                    ? 'Evento Activo'
+                    : activeEvents?.length && activeEvents.length > 1
+                      ? 'Múltiples Eventos Activos'
+                      : 'Sin evento activo'
                 }}
               </p>
+
+              <!-- If Single Active Event -->
+              <div v-if="singleActiveEvent">
+                <h3 class="text-xl font-bold">{{ singleActiveEvent.name }}</h3>
+                <p class="text-sm text-muted-foreground">
+                  {{
+                    new Date(singleActiveEvent.eventDate).toLocaleDateString(
+                      'es-VE',
+                      {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      },
+                    )
+                  }}
+                </p>
+              </div>
+
+              <!-- Else (Multiple or None) -->
+              <div v-else>
+                <h3 class="text-xl font-bold">
+                  {{
+                    activeEvents?.length
+                      ? 'Seleccione un evento'
+                      : 'Histórico de eventos'
+                  }}
+                </h3>
+              </div>
             </div>
           </div>
 
+          <!-- Right Side: Selector and Actions -->
           <div class="flex flex-col gap-2 md:items-end">
+            <!-- Selector: Show if NOT single active OR if user wants to change -->
             <ClientOnly>
-              <Select
-                :model-value="selectedEventId || undefined"
-                @update:model-value="handleEventChange"
+              <div
+                v-if="
+                  !singleActiveEvent ||
+                  (singleActiveEvent &&
+                    selectedEventId !== singleActiveEvent.id) ||
+                  true
+                "
               >
-                <SelectTrigger class="w-full md:w-[300px]">
-                  <SelectValue placeholder="Seleccionar evento..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem
-                    v-for="evt in allEvents"
-                    :key="evt.id"
-                    :value="evt.id"
-                  >
-                    {{ evt.name }} ({{
-                      new Date(evt.eventDate).toLocaleDateString()
-                    }})
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <!-- Keep selector always visible but maybe styled differently? 
+                      The user asked: "why select if already active?".
+                      So if singleActiveEvent, we might hide the selector unless requested.
+                      For now I will show it if selected != active OR if multiple/none.
+                      Wait, user said "take default... in case >1 show selector".
+                      Let's hide selector if singleActiveEvent AND selectedId == singleActiveEvent.id
+                  -->
+              </div>
+
+              <div
+                v-if="
+                  !singleActiveEvent ||
+                  (activeEvents?.length === 1 &&
+                    selectedEventId !== activeEvents[0].id)
+                "
+              >
+                <!-- This condition means: Show selector if NO single active event, OR if there is one but we are looking at another one -->
+              </div>
+
+              <!-- Simplified Logic: Always show selector but pre-filled? 
+                   User's complaint: "why select...". 
+                   UI pattern: If single active, show just the info. Add a "Change" button to show selector?
+                   Let's try: Show selector only if multiple active OR none active.
+                   If single active, show info + "View another event" link/button?
+                   Actually, let's just make the selector visible but secondary if single active.
+                   But to strictly follow user request:
+                   "tomar por defecto... en caso de haber más de un evento activo entonces sí mostrar el selector"
+              -->
+
+              <div
+                v-if="
+                  !singleActiveEvent ||
+                  (singleActiveEvent &&
+                    selectedEventId !== singleActiveEvent.id)
+                "
+                class="w-full md:w-[300px]"
+              >
+                <Select
+                  :model-value="selectedEventId || undefined"
+                  @update:model-value="handleEventChange"
+                >
+                  <SelectTrigger class="w-full">
+                    <SelectValue placeholder="Seleccionar evento..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="evt in allEvents"
+                      :key="evt.id"
+                      :value="evt.id"
+                    >
+                      <span :class="{ 'font-bold': evt.isActive }">
+                        {{ evt.name }}
+                      </span>
+                      <span class="ml-2 text-xs text-muted-foreground">
+                        ({{ new Date(evt.eventDate).toLocaleDateString() }})
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p
+                  v-if="activeEvents?.length && activeEvents.length > 1"
+                  class="mt-1 text-xs text-amber-600"
+                >
+                  Hay {{ activeEvents.length }} eventos activos. Seleccione uno.
+                </p>
+              </div>
+
+              <!-- If single active and selected, maybe show a "View another" button to reveal selector? -->
+              <Button
+                v-if="
+                  singleActiveEvent && selectedEventId === singleActiveEvent.id
+                "
+                variant="ghost"
+                size="sm"
+                @click="selectedEventId = null"
+              >
+                Ver otro evento
+              </Button>
             </ClientOnly>
 
-            <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <div class="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
               <Button
-                v-if="usePermissions().hasPermission('reports:read')"
+                v-if="hasPermission('reports:read')"
                 variant="outline"
                 size="sm"
                 class="w-full md:w-auto"
@@ -119,7 +219,10 @@ const formatPercentage = (value: number) => {
               </Button>
 
               <Button
-                v-if="selectedEventId && selectedEventId !== activeEvent?.id"
+                v-if="
+                  selectedEventId &&
+                  !activeEvents?.some((e) => e.id === selectedEventId)
+                "
                 variant="default"
                 size="sm"
                 class="w-full md:w-auto"

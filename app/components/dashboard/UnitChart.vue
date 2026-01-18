@@ -14,6 +14,14 @@ const props = defineProps<{
   units: UnitStat[] | undefined;
 }>();
 
+const isMounted = ref(false);
+onMounted(() => {
+  // Small delay to ensure layout is calculated
+  setTimeout(() => {
+    isMounted.value = true;
+  }, 100);
+});
+
 const colorMode = useColorMode();
 
 const chartOptions = computed(() => {
@@ -45,10 +53,9 @@ const chartOptions = computed(() => {
       },
     },
     grid: {
-      left: '3%',
+      left: '25%', // Increased to accommodate labels manually since containLabel is causing warnings
       right: '4%',
       bottom: '3%',
-      containLabel: true,
     },
     xAxis: {
       type: 'value',
@@ -106,16 +113,19 @@ const chartOptions = computed(() => {
 <template>
   <div class="h-full w-full">
     <VChart
-      v-if="units && units.length > 0"
+      v-if="isMounted && units && units.length > 0"
       class="h-full w-full"
       :option="chartOptions"
       autoresize
     />
     <div
-      v-else
+      v-else-if="!units || units.length === 0"
       class="flex h-full items-center justify-center text-muted-foreground"
     >
       No hay datos de unidades...
+    </div>
+    <div v-else class="flex h-full items-center justify-center">
+      <!-- Spacer while mounting/loading chart but data exists -->
     </div>
   </div>
 </template>
