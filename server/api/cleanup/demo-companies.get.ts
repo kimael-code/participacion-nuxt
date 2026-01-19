@@ -6,7 +6,7 @@ import { db } from '../../utils/db';
  * Cron job endpoint to clean up demo companies older than 24 hours.
  * This runs daily at 2 AM via Vercel Cron Jobs.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (_event) => {
   try {
     // Calculate cutoff time (24 hours ago)
     const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);

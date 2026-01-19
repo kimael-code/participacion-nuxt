@@ -31,11 +31,17 @@ const handleLogin = async () => {
       },
       onSuccess: async () => {
         toast.success('Sesión iniciada con éxito');
-        // Redirigir al dashboard
         await navigateTo('/dashboard');
       },
     },
   );
+};
+
+const handleSocialLogin = async (provider: 'github') => {
+  await authClient.signIn.social({
+    provider,
+    callbackURL: '/dashboard',
+  });
 };
 </script>
 
@@ -83,6 +89,28 @@ const handleLogin = async () => {
             <Button type="submit" class="w-full" :disabled="isLoading">
               <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
               Ingresar
+            </Button>
+
+            <div class="relative">
+              <div class="absolute inset-0 flex items-center">
+                <span class="w-full border-t" />
+              </div>
+              <div class="relative flex justify-center text-xs uppercase">
+                <span class="bg-background px-2 text-muted-foreground">
+                  O continúa con
+                </span>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              type="button"
+              class="w-full"
+              :disabled="isLoading"
+              @click="handleSocialLogin('github')"
+            >
+              <Icon name="lucide:github" class="mr-2 h-4 w-4" />
+              GitHub
             </Button>
             <div class="text-center text-sm">
               ¿No tienes una cuenta?
