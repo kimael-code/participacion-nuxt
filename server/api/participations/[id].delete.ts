@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import { participations } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { participations } from '../../database/schema';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   // Auth provided by middleware

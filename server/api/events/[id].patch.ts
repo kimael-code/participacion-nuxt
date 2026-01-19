@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { events } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { events } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const updateEventSchema = z.object({
   name: z.string().min(3).optional(),

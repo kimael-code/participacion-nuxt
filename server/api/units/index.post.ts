@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { administrativeUnits } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { administrativeUnits } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const createUnitSchema = z.object({
   name: z.string().min(2),

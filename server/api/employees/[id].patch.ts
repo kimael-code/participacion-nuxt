@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { employees } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { employees } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const updateEmployeeSchema = z.object({
   firstName: z.string().optional(),

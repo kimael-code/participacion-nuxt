@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { employees } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { employees } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const createEmployeeSchema = z.object({
   firstName: z.string().min(2),

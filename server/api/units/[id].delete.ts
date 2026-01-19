@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
-import { administrativeUnits } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { administrativeUnits } from '../../database/schema';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   // Auth and companyId provided by middleware

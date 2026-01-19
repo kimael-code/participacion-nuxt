@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
-import { municipalities } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { auth } from '../../auth';
+import { municipalities } from '../../database/schema';
+import { db } from '../../utils/db';
 
 /* const querySchema = z.object({
   stateId: z.string().optional(),

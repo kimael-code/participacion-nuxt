@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
+import { auth } from '../../auth';
 import {
   administrativeUnits,
   companies,
   userCompanies,
-} from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+} from '../../database/schema';
+import { db } from '../../utils/db';
 
 const createCompanySchema = z.object({
   name: z.string().min(3),

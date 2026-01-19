@@ -6,8 +6,8 @@ import {
   events,
   nonParticipationReasons,
   participations,
-} from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+} from '../../database/schema';
+import { db } from '../../utils/db';
 
 const querySchema = z.object({
   eventId: z.string(),

@@ -5,8 +5,8 @@ import {
   municipalities,
   parishes,
   states,
-} from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+} from '../../database/schema';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);

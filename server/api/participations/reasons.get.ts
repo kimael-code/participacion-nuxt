@@ -1,4 +1,4 @@
-import { db } from '~~/server/utils/db';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   // Auth provided by middleware

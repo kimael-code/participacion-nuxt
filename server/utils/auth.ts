@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import type { H3Event } from 'h3';
-import { userCompanies } from '~~/server/database/schema';
+import { userCompanies } from '../database/schema';
 import { db } from './db';
 
 /**

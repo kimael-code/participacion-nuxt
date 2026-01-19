@@ -1,5 +1,5 @@
-import * as schema from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import * as schema from '../../database/schema';
+import { db } from '../../utils/db';
 
 const { employees } = schema;
 

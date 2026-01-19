@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth';
-import { companies, userCompanies } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { auth } from '../../auth';
+import { companies, userCompanies } from '../../database/schema';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   const session = await auth.api.getSession({ headers: event.headers });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { events } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { events } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const createEventSchema = z.object({
   name: z.string().min(3),

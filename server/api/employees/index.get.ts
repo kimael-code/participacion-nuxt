@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, like, or } from 'drizzle-orm';
-import { employees } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { employees } from '../../database/schema';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   // Auth and companyId provided by middleware

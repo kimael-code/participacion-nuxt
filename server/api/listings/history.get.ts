@@ -1,7 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { csvListings, users } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { csvListings, users } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const querySchema = z.object({
   eventId: z.string(),

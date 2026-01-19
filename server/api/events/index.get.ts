@@ -1,6 +1,6 @@
 import { and, count, desc, eq, like, or } from 'drizzle-orm';
-import { events } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { events } from '../../database/schema';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   const { companyId } = event.context.auth!;

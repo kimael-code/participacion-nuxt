@@ -1,8 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { auth } from '~~/server/auth';
-import { companies, userCompanies } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { auth } from '../../auth';
+import { companies, userCompanies } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const updateCompanySchema = z.object({
   name: z.string().min(3).optional(),

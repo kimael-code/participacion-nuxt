@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { locations } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { locations } from '../../database/schema';
+import { db } from '../../utils/db';
 
 const createLocationSchema = z.object({
   name: z.string().min(3),

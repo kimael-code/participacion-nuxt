@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
-import { events, participations } from '~~/server/database/schema';
-import { db } from '~~/server/utils/db';
+import { events, participations } from '../../database/schema';
+import { db } from '../../utils/db';
 
 export default defineEventHandler(async (event) => {
   const { companyId } = event.context.auth!;
