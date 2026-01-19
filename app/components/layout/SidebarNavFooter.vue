@@ -8,14 +8,16 @@ const user = computed(() => session.value?.data?.user);
 const { isMobile, setOpenMobile } = useSidebar();
 
 async function handleLogout() {
-  await authClient.signOut({
-    fetchOptions: {
-      onSuccess: () => {
-        setOpenMobile(false);
-        navigateTo('/');
-      },
-    },
-  });
+  try {
+    await authClient.signOut();
+    setOpenMobile(false);
+    // Usamos window.location.href para asegurar un refresco total de la sesión
+    window.location.href = '/login';
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+    // Fallback de emergencia
+    window.location.href = '/login';
+  }
 }
 </script>
 
