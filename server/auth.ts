@@ -1,9 +1,4 @@
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin } from 'better-auth/plugins';
-import * as schema from './database/schema';
 import { db } from './utils/db';
-const isDevelopment = process.env.NODE_ENV === 'development';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -25,7 +20,7 @@ export const auth = betterAuth({
     },
   },
   emailAndPassword: {
-    enabled: isDevelopment, // Habilitar en desarrollo para pruebas fáciles
+    enabled: true, // Siempre habilitado como fallback seguro
   },
   socialProviders: {
     google: {
