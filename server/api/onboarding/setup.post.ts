@@ -32,6 +32,18 @@ export default defineEventHandler(async (event) => {
     };
   }
 
+  // 2.5 Ensure "admin" role exists in roles table
+  await db
+    .insert(schema.roles)
+    .values({
+      id: 'role-admin',
+      name: 'Administrador',
+      slug: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .onConflictDoNothing();
+
   // 3. Create "Demo Company"
   const companyId = `demo-comp-${userId}-${Date.now()}`;
   const companyName = `Demo - ${userName}`;
