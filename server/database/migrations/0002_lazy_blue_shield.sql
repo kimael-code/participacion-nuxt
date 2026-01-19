@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `type` text DEFAULT 'voting' NOT NULL;
