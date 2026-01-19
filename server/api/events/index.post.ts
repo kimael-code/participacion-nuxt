@@ -11,31 +11,46 @@ const createEventSchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-  // Auth and companyId provided by middleware
-  const { companyId } = event.context.auth!;
+  try {
+    // Auth and companyId provided by middleware
+    const { companyId } = event.context.auth!;
 
-  const body = await readValidatedBody(event, (b) =>
-    createEventSchema.parse(b),
-  );
+    const body = await readValidatedBody(event, (b) =>
+      createEventSchema.parse(b),
+    );
 
-  const [newEvent] = await db
-    .insert(events)
-    .values({
-      id: crypto.randomUUID(),
-      name: body.name,
-      eventDate: new Date(body.date),
-      type: body.type,
-      isActive: body.active,
-      description: body.description,
-      companyId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
+    console.log(
+      `[Events] Creating new event for company ${companyId}:`,
+      body.name,
+    );
 
-  return {
-    ...newEvent,
-    date: newEvent.eventDate,
-    active: newEvent.isActive,
-  };
+    const [newEvent] = await db
+      .insert(events)
+      .values({
+        id: crypto.randomUUID(),
+        name: body.name,
+        eventDate: new Date(body.date),
+        type: body.type,
+        isActive: body.active,
+        description: body.description,
+        companyId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    console.log(`[Events] Event created successfully: ${newEvent.id}`);
+
+    return {
+      ...newEvent,
+      date: newEvent.eventDate,
+      active: newEvent.isActive,
+    };
+  } catch (error: any) {
+    console.error('[Events] Failed to create event:', error);
+    throw createError({
+      statusCode: 500,
+      statusMessage: error.message || 'Error interno al crear el evento',
+    });
+  }
 });
