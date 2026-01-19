@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { authClient } from '~/utils/auth-client';
+import { toast } from 'vue-sonner';
 
 definePageMeta({
   layout: 'auth',
@@ -26,12 +27,15 @@ const startDemo = async () => {
     const res = await response.json();
 
     if (res.success) {
+      toast.success('Entorno preparado con éxito');
       // Force a hard redirect to ensure middleware re-evaluates with fresh session
       window.location.href = '/dashboard';
+    } else {
+      toast.error(res.message || 'Error al configurar el entorno');
     }
   } catch (error) {
-    console.error('[Onboarding] Setup failed:', error);
-    // TODO: Show toast error
+    toast.error('Error de conexión con el servidor');
+    console.error(error);
   } finally {
     isLoading.value = false;
   }
