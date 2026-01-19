@@ -14,9 +14,7 @@ const handleSelect = async (companyId: string) => {
 };
 
 onMounted(async () => {
-  console.log('CompanySwitcher mounted with Pinia. Calling init...');
   await init();
-  console.log('Init completed. Companies:', userCompanies.value);
 });
 </script>
 

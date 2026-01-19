@@ -15,8 +15,6 @@ const isLoading = ref(false);
 const startDemo = async () => {
   isLoading.value = true;
   try {
-    console.log('[Onboarding] Starting demo setup...');
-
     // Use native fetch instead of $fetch
     const response = await fetch('/api/onboarding/setup', {
       method: 'POST',
@@ -26,10 +24,8 @@ const startDemo = async () => {
     });
 
     const res = await response.json();
-    console.log('[Onboarding] Setup response:', res);
 
     if (res.success) {
-      console.log('[Onboarding] Success! Redirecting to dashboard...');
       // Force a hard redirect to ensure middleware re-evaluates with fresh session
       window.location.href = '/dashboard';
     }
