@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
-import { auth } from '~~/server/auth'; // Ensure this path is correct
+import { auth } from '../../auth';
 import * as schema from '../../database/schema';
+import { db } from '../../utils/db';
 import { seedDemoData } from '../../utils/demo-seeder';
 
 export default defineEventHandler(async (event) => {
