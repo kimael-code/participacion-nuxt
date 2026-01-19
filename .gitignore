@@ -32,3 +32,6 @@ logs
 *.db-journal
 playwright-report/
 test-results/
+
+# Internal documentation
+docs/

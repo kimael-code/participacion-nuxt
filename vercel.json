@@ -1,0 +1,13 @@
+{
+  "buildCommand": "pnpm run build",
+  "devCommand": "pnpm run dev",
+  "installCommand": "pnpm install",
+  "framework": "nuxtjs",
+  "outputDirectory": ".output/public",
+  "crons": [
+    {
+      "path": "/api/cleanup/demo-companies",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

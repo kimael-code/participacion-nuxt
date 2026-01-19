@@ -11,7 +11,7 @@ export async function loginAsAdmin(page: Page) {
 
   // 1. Sign Up (creates user in DB)
   // We use page.request (APIRequestContext) which shares cookie storage with the page
-  const signUpRes = await page.request.post('/api/auth/sign-up/email', {
+  const _signUpRes = await page.request.post('/api/auth/sign-up/email', {
     data: {
       email,
       password,
@@ -37,4 +37,34 @@ export async function loginAsAdmin(page: Page) {
   });
 
   // No need to set cookies manually, the API response Set-Cookie header does it.
+}
+
+/**
+ * Creates and logs in a new user WITHOUT assigning them to a company.
+ * This is used to test the onboarding flow.
+ */
+export async function loginAsNewUser(page: Page) {
+  const email = `newuser-${Date.now()}@test.com`;
+  const password = 'password123';
+  const name = 'New Test User';
+
+  // 1. Sign Up
+  await page.request.post('/api/auth/sign-up/email', {
+    data: {
+      email,
+      password,
+      name,
+    },
+  });
+
+  // 2. Sign In (to establish session)
+  await page.request.post('/api/auth/sign-in/email', {
+    data: {
+      email,
+      password,
+    },
+  });
+
+  // User is now logged in but has NO company assigned
+  return { email, password, name };
 }
