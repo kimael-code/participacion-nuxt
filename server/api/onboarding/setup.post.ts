@@ -80,6 +80,10 @@ export default defineEventHandler(async (event) => {
     // We don't fail the request, user just gets empty company
   }
 
+  console.log(
+    `[Onboarding] Setup complete for user ${userId}. Company: ${companyId}`,
+  );
+
   return {
     success: true,
     companyId,

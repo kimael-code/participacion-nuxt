@@ -31,19 +31,27 @@ export default defineEventHandler(async (event) => {
     },
   });
 
-  if (!userWithPermissions || !userWithPermissions.roleData) {
+  if (!userWithPermissions) {
+    console.warn(`[Permissions] User ${userId} not found in DB`);
     return {
       role: 'user',
       permissions: [],
     };
   }
 
-  const perms = userWithPermissions.roleData.rolePermissions.map(
-    (rp) => rp.permission.slug,
-  );
+  // Fallback to raw role string if relation is missing
+  const roleSlug =
+    userWithPermissions.roleData?.slug || userWithPermissions.role || 'user';
+
+  const perms =
+    userWithPermissions.roleData?.rolePermissions?.map(
+      (rp) => rp.permission.slug,
+    ) || [];
+
+  console.log(`[Permissions] User ${userId} has role: ${roleSlug}`);
 
   return {
-    role: userWithPermissions.roleData.slug,
+    role: roleSlug,
     permissions: perms,
   };
 });
