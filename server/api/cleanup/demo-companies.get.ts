@@ -1,6 +1,6 @@
 import { and, eq, like, lt } from 'drizzle-orm';
-import * as schema from '~/server/database/schema';
-import { db } from '~/server/utils/db';
+import * as schema from '../../database/schema';
+import { db } from '../../utils/db';
 
 /**
  * Cron job endpoint to clean up demo companies older than 24 hours.
