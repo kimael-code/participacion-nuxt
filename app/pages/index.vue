@@ -50,6 +50,21 @@ const isLogged = computed(() => !!session.value?.data);
         <div
           class="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 text-[13px] leading-5 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20 dark:bg-[#161615] dark:text-[#EDEDEC] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
         >
+          <div
+            class="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200"
+          >
+            <Icon
+              name="lucide:alert-triangle"
+              class="mt-0.5 h-4 w-4 shrink-0"
+            />
+            <div class="text-[12px]">
+              <p class="font-medium">Entorno de Demo</p>
+              <p class="opacity-90">
+                La base de datos se reinicia automáticamente cada hora. Los
+                datos creados por usuarios serán eliminados.
+              </p>
+            </div>
+          </div>
           <h1 class="mb-2 text-xl font-semibold tracking-tight">
             Participación Nuxt
           </h1>

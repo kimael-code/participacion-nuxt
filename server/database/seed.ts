@@ -17,11 +17,13 @@ import {
   userCompanies,
 } from './schema';
 
-async function seed() {
+export async function seed(
+  isDev: boolean = process.env.NODE_ENV === 'development',
+) {
   // Check for development environment
-  if (process.env.NODE_ENV !== 'development') {
+  if (!isDev && process.env.CRON_SECRET === undefined) {
     console.error(
-      '❌ Error: Seed script can only be run in development environment.',
+      '❌ Error: Seed script can only be run in development or with CRON_SECRET.',
     );
     process.exit(1);
   }
@@ -376,4 +378,12 @@ async function seed() {
   }
 }
 
-seed();
+if (
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.env.NODE_ENV === 'development'
+) {
+  seed().catch((err) => {
+    console.error('Seed failed:', err);
+    process.exit(1);
+  });
+}

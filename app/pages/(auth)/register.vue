@@ -12,8 +12,14 @@ const name = ref('');
 const email = ref('');
 const password = ref('');
 const passwordConfirmation = ref('');
+const honeypot = ref('');
 
 const handleRegister = async () => {
+  if (honeypot.value) {
+    console.warn('Bot detected via honeypot');
+    return;
+  }
+
   if (password.value !== passwordConfirmation.value) {
     toast.error('Las contraseñas no coinciden');
     return;
@@ -128,6 +134,9 @@ const handleSocialLogin = async (provider: 'github') => {
                 :disabled="isLoading"
               />
             </div>
+
+            <CommonHoneypot v-model="honeypot" />
+
             <Button type="submit" :disabled="isLoading" class="w-full">
               <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
               Crear Cuenta
