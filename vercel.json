@@ -6,8 +6,8 @@
   "outputDirectory": ".output/public",
   "crons": [
     {
-      "path": "/api/cleanup/demo-companies",
-      "schedule": "0 2 * * *"
+      "path": "/api/cleanup/reset-database",
+      "schedule": "0 * * * *"
     }
   ]
 }
