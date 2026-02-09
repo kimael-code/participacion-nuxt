@@ -60,8 +60,8 @@ const isLogged = computed(() => !!session.value?.data);
             <div class="text-[12px]">
               <p class="font-medium">Entorno de Demo</p>
               <p class="opacity-90">
-                La base de datos se reinicia automáticamente cada hora. Los
-                datos creados por usuarios serán eliminados.
+                La base de datos se reinicia automáticamente todos los días a
+                medianoche. Los datos creados por usuarios serán eliminados.
               </p>
             </div>
           </div>
